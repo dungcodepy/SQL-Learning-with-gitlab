@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ thống Ôn thi SQL Pro - Chế độ Kiểm tra</title>
+    <script src="https://cdn.jsdelivr.net/npm/alasql@4"></script>
+    <style>
+        :root {
+            --primary: #2563eb; --primary-hover: #1d4ed8;
+            --success: #16a34a; --danger: #dc2626;
+            --bg: #f1f5f9; --border: #e2e8f0; --text: #333;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0; padding: 10px 15px; background-color: var(--bg); color: var(--text);
+            display: flex; flex-direction: column; gap: 10px; height: 100vh; box-sizing: border-box; overflow: hidden;
+        }
+        
+        .top-bar {
+            background: white; border: 1px solid var(--border); border-radius: 6px; padding: 8px 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; align-items: center; gap: 15px; flex: 0 0 auto;
+            transition: all 0.3s ease;
+        }
+        select {
+            padding: 6px 10px; font-size: 15px; font-weight: bold; border: 2px solid var(--primary);
+            border-radius: 4px; color: var(--primary); cursor: pointer; outline: none; background-color: #eff6ff;
+        }
+        
+        .main-content { display: flex; gap: 15px; flex: 1; min-height: 0; transition: all 0.3s ease;}
+        
+        /* Cột Trái */
+        .left-panel { flex: 1; display: flex; flex-direction: column; background: white; border-radius: 6px; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden; transition: all 0.3s ease;}
+        
+        .tab-header { display: flex; background: #e2e8f0; border-bottom: 2px solid var(--primary); flex: 0 0 auto; }
+        .tab-btn { flex: 1; padding: 10px; font-size: 15px; font-weight: bold; border: none; background: transparent; cursor: pointer; color: #475569; transition: all 0.2s; }
+        .tab-btn:hover { background: #cbd5e1; }
+        .tab-btn.active { background: var(--primary); color: white; }
+        
+        .tab-content { display: none; flex: 1; flex-direction: column; padding: 15px; overflow-y: auto; }
+        .tab-content.active { display: flex; gap: 12px; }
+
+        .question-box { background: #eff6ff; border-left: 4px solid var(--primary); padding: 12px; font-weight: 500; font-size: 15px; line-height: 1.4; border-radius: 0 4px 4px 0;}
+        .controls { display: flex; justify-content: space-between; align-items: center; }
+        
+        /* Thanh điều hướng chọn câu */
+        .q-nav { display: flex; gap: 5px; flex-wrap: wrap; }
+        .q-nav-btn { width: 32px; height: 32px; border-radius: 4px; border: 1px solid #cbd5e1; background: white; cursor: pointer; font-weight: bold; color: #475569; transition: 0.2s; }
+        .q-nav-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+        .q-nav-btn:hover:not(.active) { background: #e2e8f0; }
+
+        button.action-btn { padding: 8px 14px; font-size: 13px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; color: white; transition: 0.2s; background: var(--primary); }
+        button.action-btn:hover { background: var(--primary-hover); }
+        button.next-btn { background: #475569; } button.next-btn:hover { background: #334155; }
+
+        textarea { width: 100%; height: 90px; padding: 10px; font-family: 'Consolas', monospace; font-size: 14px; border: 1px solid #cbd5e1; border-radius: 4px; resize: vertical; box-sizing: border-box; }
+        .result-wrapper { flex: 1; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+        .result-container { overflow-x: auto; max-height: 250px; border: 1px solid #e2e8f0; border-radius: 4px; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th, td { border: 1px solid var(--border); padding: 5px 6px; text-align: left; }
+        th { background-color: #f1f5f9; position: sticky; top: 0; }
+        h4 { margin: 0 0 3px 0; color: #1e293b; font-size: 14px;}
+        .status { padding: 8px; border-radius: 4px; font-weight: bold; display: none; font-size: 13px; }
+        .status.correct { background: #dcfce7; color: var(--success); display: block; border: 1px solid #bbf7d0;}
+        .status.error { background: #fee2e2; color: var(--danger); display: block; border: 1px solid #fecaca;}
+
+        .quiz-options { display: flex; flex-direction: column; gap: 8px; }
+        .opt-btn { padding: 10px 12px; font-size: 14px; text-align: left; border: 2px solid #cbd5e1; border-radius: 6px; background: white; cursor: pointer; transition: 0.2s; }
+        .opt-btn:hover:not(:disabled) { border-color: var(--primary); background: #f8fafc; }
+        .opt-btn.correct { border-color: var(--success); background: #f0fdf4; color: #166534; }
+        .opt-btn.wrong { border-color: var(--danger); background: #fef2f2; color: #991b1b; }
+        .rationale-box { margin-top: 10px; padding: 12px; background: #fffbeb; border-left: 4px solid #f59e0b; border-radius: 4px; display: none; font-size: 14px; line-height: 1.4;}
+
+        /* Cột Phải Ảnh ERD */
+        .right-panel { flex: 1.2; background: white; border-radius: 6px; padding: 10px 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid var(--border); display: flex; flex-direction: column; transition: all 0.3s ease; opacity: 1; }
+        .right-panel.hidden { flex: 0; padding: 0; border: none; opacity: 0; margin-left: -15px; pointer-events: none; }
+        
+        .right-panel h2 { margin: 0 0 2px 0; font-size: 18px; color: #1e293b; }
+        .right-panel p { margin: 0 0 8px 0; font-size: 12px; color: #64748b; }
+
+        #erd-container { flex: 1; border: 2px dashed #cbd5e1; background: #fdfdfd; border-radius: 6px; display: flex; justify-content: center; align-items: center; padding: 10px; overflow: hidden; }
+        #erd-img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+    <div class="top-bar" id="top-bar">
+        <label for="db-selector" style="font-size: 16px;">📚 <b>Hệ thống Quản lý:</b></label>
+        <select id="db-selector" onchange="changeDatabase()">
+            <option value="lab03">01. Quản lý Dự án</option>
+            <option value="library">02. Quản lý Thư viện (Library)</option>
+            <option value="flight">03. Quản lý Chuyến bay (Flight)</option>
+            <option value="zoo">04. Quản lý Sở thú (Zoo)</option>
+            <option value="car">05. Quản lý Bán xe (Car)</option>
+        </select>
+    </div>
+
+    <div class="main-content">
+        <div class="left-panel">
+            <div class="tab-header">
+                <button class="tab-btn active" id="btn-practice" onclick="switchTab('practice')">💻 Thực hành Gõ Code</button>
+                <button class="tab-btn" id="btn-quiz" onclick="switchTab('quiz')">📝 Luyện Trắc Nghiệm Tổng Hợp</button>
+            </div>
+
+            <div id="practice-tab" class="tab-content active">
+                <div class="controls">
+                    <div class="q-nav" id="prac-q-nav"></div> <button class="action-btn next-btn" onclick="nextPrac()">Câu tiếp theo ❯</button>
+                </div>
+                <div id="prac-question" class="question-box"></div>
+                <textarea id="sql-input" placeholder="Nhập câu lệnh SELECT..."></textarea>
+                <div><button class="action-btn" onclick="runQuery()">▶ Chạy thử & Chấm điểm</button></div>
+                <div id="status-msg" class="status"></div>
+                
+                <div class="result-wrapper">
+                    <div><h4>Kết quả của bạn:</h4><div class="result-container" id="user-result"></div></div>
+                    <div><h4 style="color: var(--success);">Kết quả chuẩn:</h4><div class="result-container" id="expected-result"></div></div>
+                </div>
+            </div>
+
+            <div id="quiz-tab" class="tab-content">
+                <div class="controls">
+                    <div class="q-nav" id="quiz-q-nav"></div> <button class="action-btn next-btn" onclick="nextQuiz()">Câu tiếp theo ❯</button>
+                </div>
+                <div id="quiz-question" class="question-box"></div>
+                <div class="quiz-options" id="quiz-options"></div>
+                <div class="rationale-box" id="quiz-rationale"></div>
+            </div>
+        </div>
+
+        <div class="right-panel" id="erd-panel">
+            <h2>Sơ đồ Quan hệ (ERD)</h2>
+            <p>Sơ đồ cấu trúc cơ sở dữ liệu tương ứng.</p>
+            <div id="erd-container">
+                <img id="erd-img" src="" alt="Sơ đồ ERD sẽ hiển thị tại đây">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ================= DỮ LIỆU SQL & THỰC HÀNH (ĐÃ ĐỒNG BỘ FULL TỪ PDF) =================
+        const dbs = {
+            "lab03": {
+                sql: `
+                    CREATE TABLE NHANVIEN (MANV STRING, HONV STRING, TENLOT STRING, TENNV STRING, NGSINH STRING, DCHI STRING, PHAI STRING, LUONG NUMBER, MA_NQL STRING, PHG INT);
+                    CREATE TABLE PHONGBAN (TENPHG STRING, MAPHG INT, TRPHG STRING, NG_NHANCHUC STRING);
+                    CREATE TABLE DIADIEM_PHG (MAPHG INT, DIADIEM STRING);
+                    CREATE TABLE DEAN (TENDA STRING, MADA INT, DDIEM_DA STRING, PHONG INT);
+                    CREATE TABLE CONGVIEC (MADA INT, STT INT, TEN_CONG_VIEC STRING);
+                    CREATE TABLE PHANCONG (MA_NVIEN STRING, MADA INT, STT INT, THOIGIAN NUMBER);
+                    CREATE TABLE THANNHAN (MA_NVIEN STRING, TENTN STRING, PHAI STRING, NGSINH STRING, QUANHE STRING);
+                    
+                    INSERT INTO NHANVIEN VALUES 
+                    ('009', 'Đinh', 'Bá', 'Tiên', '1960-02-11', '119 Công Quỳnh, TpHCM', 'NAM', 30000, '005', 5),
+                    ('005', 'Nguyễn', 'Thanh', 'Tùng', '1962-08-20', '222 Nguyễn Văn Cừ, TpHCM', 'NAM', 40000, '006', 5),
+                    ('007', 'Bùi', 'Ngọc', 'Hằng', '1954-11-03', '332 Nguyễn Thái Học, Tp HCM', 'NAM', 25000, '001', 4),
+                    ('001', 'Lê', 'Quỳnh', 'Như', '1967-01-02', '291 Hồ Văn Huê, Tp HCM', 'NU', 43000, '006', 4),
+                    ('004', 'Nguyễn', 'Mạnh', 'Hùng', '1967-04-03', '95 Bà Rịa, Vũng Tàu', 'NAM', 38000, '005', 5),
+                    ('003', 'Trần', 'Thanh', 'Tâm', '1957-04-05', '34 Mai Thị Lựu, Tp HCM', 'NAM', 25000, '005', 5),
+                    ('008', 'Trần', 'Hồng', 'Quang', '1967-01-09', '80 Lê Hồng Phong, Tp HCM', 'NAM', 25000, '001', 4),
+                    ('006', 'Phạm', 'Văn', 'Vinh', '1965-01-01', '45 Trưng Vương, Hà Nội', 'NU', 55000, null, 1);
+                    
+                    INSERT INTO PHONGBAN VALUES 
+                    ('Nghiên cứu', 5, '005', '1978-05-22'), 
+                    ('Điều hành', 4, '008', '1985-01-01'), 
+                    ('Quản lý', 1, '006', '1971-06-19');
+                    
+                    INSERT INTO DIADIEM_PHG VALUES 
+                    (1, 'TP HCM'), (4, 'Hà Nội'), (5, 'TAU'), (5, 'NHA TRANG'), (5, 'TP HCM');
+                    
+                    INSERT INTO DEAN VALUES 
+                    ('San pham X', 1, 'Vũng Tàu', 5), 
+                    ('San pham Y', 2, 'Nha Trang', 5), 
+                    ('San pham Z', 3, 'TP HCM', 5),
+                    ('Tin hoc hoa', 10, 'Hà Nội', 4),
+                    ('Cap quang', 20, 'TP HCM', 1),
+                    ('Dao tao', 30, 'Hà Nội', 4);
+                    
+                    INSERT INTO CONGVIEC VALUES 
+                    (1, 1, 'Thiet ke san pham X'), (1, 2, 'Thu nghiem san pham X'),
+                    (2, 1, 'San xuat san pham Y'), (2, 2, 'Quang cao san pham Y'),
+                    (3, 1, 'Khuyen mai san pham Z'), (10, 1, 'Tin hoc hoa nhan su tien luong'),
+                    (10, 2, 'Tin hoc hoa phong Kinh doanh'), (20, 1, 'Lap dat cap quang'),
+                    (30, 1, 'Dao tao nhan vien Marketing'), (30, 2, 'Dao tao chuyen vien thiet ke');
+
+                    INSERT INTO PHANCONG VALUES 
+                    ('009', 1, 1, 32), ('009', 2, 2, 8), ('004', 3, 1, 40),
+                    ('003', 1, 2, 20), ('003', 2, 1, 20), ('008', 10, 1, 35),
+                    ('008', 30, 2, 5), ('001', 30, 1, 20), ('001', 20, 1, 15),
+                    ('006', 20, 1, 30), ('005', 3, 1, 10), ('005', 10, 2, 10),
+                    ('005', 20, 1, 10), ('007', 30, 2, 30), ('007', 10, 2, 10);
+                    
+                    INSERT INTO THANNHAN VALUES 
+                    ('005', 'Trinh', 'NU', '1976-04-05', 'Con gái'),
+                    ('005', 'Khang', 'NAM', '1973-10-25', 'Con trai'),
+                    ('005', 'Phuong', 'NU', '1948-05-03', 'Vợ chồng'),
+                    ('001', 'Minh', 'NAM', '1932-02-29', 'Vợ chồng'),
+                    ('009', 'Tiến', 'NAM', '1978-01-01', 'Con trai'),
+                    ('009', 'Châu', 'NU', '1978-12-30', 'Con gái'),
+                    ('009', 'Phuong', 'NU', '1957-05-05', 'Vợ chồng');
+                `,
+                practice: [
+                    { q: "Câu 1: Tìm ra mã số (MANV) và họ tên đầy đủ (ghép từ HONV, TENLOT, TENNV) của nhân viên có lương trên 30000.", expectedSQL: "SELECT MANV, HONV, TENNV FROM NHANVIEN WHERE LUONG > 30000" },
+                    { q: "Câu 2: Liệt kê tên các phòng ban (TENPHG) và địa điểm của phòng đó (DIADIEM).", expectedSQL: "SELECT TENPHG, DIADIEM FROM PHONGBAN JOIN DIADIEM_PHG ON PHONGBAN.MAPHG = DIADIEM_PHG.MAPHG" },
+                    { q: "Câu 3: Tìm tên đề án (TENDA) thuộc quyền quản lý của phòng số 5 (PHONG = 5).", expectedSQL: "SELECT TENDA FROM DEAN WHERE PHONG = 5" },
+                    { q: "Câu 4: Tính tổng thời gian (THOIGIAN) mà nhân viên mã '009' đã tham gia vào các đề án.", expectedSQL: "SELECT SUM(THOIGIAN) AS TONG_THOIGIAN FROM PHANCONG WHERE MA_NVIEN = '009'" },
+                    { q: "Câu 5: Liệt kê tên (TENTN) và mối quan hệ (QUANHE) của các thân nhân thuộc về nhân viên có mã số '005'.", expectedSQL: "SELECT TENTN, QUANHE FROM THANNHAN WHERE MA_NVIEN = '005'" }
+                ],
+                erdRaw: [
+                    { id: 'DIADIEM_PHG', x: 20, y: 100, rows: ['🔑 MAPHG|pk', 'DIADIEM'] },
+                    { id: 'PHONGBAN', x: 20, y: 300, rows: ['🔑 MAPHG|pk', 'TENPHG', '@ TRPHG|fk', 'NG_NHANCHUC'] },
+                    { id: 'THANNHAN', x: 300, y: 20, rows: ['@ MA_NV|fk', '🔑 TENTN|pk', 'PHAI', 'NGSINH', 'QUANHE'] },
+                    { id: 'DEAN', x: 400, y: 200, rows: ['🔑 MADA|pk', 'TENDA', 'DDIEM_DA', '# PHONG|fk'] },
+                    { id: 'CONGVIEC', x: 350, y: 500, rows: ['🔑 MADA|pk', 'STT', 'TEN_CONG_VIEC'] },
+                    { id: 'PHANCONG', x: 600, y: 500, rows: ['🔑 MA_NVIEN|pk', '🔑 MADA|pk', 'STT', 'THOIGIAN'] },
+                    { id: 'NHANVIEN', x: 750, y: 100, rows: ['🔑 MANV|pk', 'HONV', 'TENLOT', 'TENNV', 'NGSINH', 'DCHI', 'PHAI', 'LUONG', '@ MA_NQL|fk', '# PHG|fk'] }
+                ],
+                erdConns: [ 
+                    ['DIADIEM_PHG-MAPHG', 'PHONGBAN-MAPHG', '#3b82f6'], 
+                    ['DEAN-PHONG', 'PHONGBAN-MAPHG', '#4f46e5'], 
+                    ['PHONGBAN-TRPHG', 'NHANVIEN-MANV', '#3b82f6'], 
+                    ['CONGVIEC-MADA', 'DEAN-MADA', '#22c55e'], 
+                    ['PHANCONG-MADA', 'CONGVIEC-MADA', '#d946ef'], 
+                    ['PHANCONG-MA_NVIEN', 'NHANVIEN-MANV', '#eab308'], 
+                    ['THANNHAN-MA_NV', 'NHANVIEN-MANV', '#eab308'],
+                    ['NHANVIEN-MA_NQL', 'NHANVIEN-MANV', '#8b5cf6'] 
+                ]
+            },
+            "library": {
+                sql: `
+                    CREATE TABLE CATEGORIES (CategoryID INT, CategoryName STRING, Description STRING);
+                    CREATE TABLE AUTHORS (AuthorID STRING, FullName STRING, Nationality STRING, BirthYear INT);
+                    CREATE TABLE BOOKS (BookID STRING, Title STRING, AuthorID STRING, PublishYear INT, CategoryID INT, StockQuantity INT);
+                    CREATE TABLE MEMBERS (MemberID STRING, FullName STRING, Phone STRING, JoinDate STRING, Status STRING);
+                    CREATE TABLE LOANS (LoanID INT, BookID STRING, MemberID STRING, BorrowDate STRING, DueDate STRING, ReturnDate STRING, Status STRING);
+                    CREATE TABLE FINES (FineID INT, LoanID INT, Amount NUMBER, Reason STRING, PaidStatus STRING);
+                    
+                    INSERT INTO CATEGORIES VALUES (1, 'Science Fiction', 'Futuristic'), (2, 'History', 'Events'), (3, 'Technology', 'IT'), (4, 'Fantasy', 'Magic'), (5, 'Mystery', 'Crime'), (6, 'Romance', 'Love');
+                    
+                    INSERT INTO AUTHORS VALUES ('A01', 'Frank Herbert', 'USA', 1920), ('A02', 'Yuval Noah Harari', 'Israel', 1976), ('A03', 'Robert C. Martin', 'USA', 1952), ('A04', 'J.K. Rowling', 'UK', 1965), ('A05', 'Arthur Conan Doyle', 'UK', 1859), ('A06', 'Isaac Asimov', 'USA', 1920);
+                    
+                    INSERT INTO BOOKS VALUES ('B001', 'Dune', 'A01', 1965, 1, 5), ('B002', 'Sapiens', 'A02', 2011, 2, 8), ('B003', 'Clean Code', 'A03', 2008, 3, 10), ('B004', 'Harry Potter', 'A04', 1997, 4, 15), ('B005', 'Sherlock Holmes', 'A05', 1892, 5, 4), ('B006', 'Foundation', 'A06', 1951, 1, 6), ('B007', 'Homo Deus', 'A02', 2015, 2, 7), ('B008', 'Clean Architecture', 'A03', 2017, 3, 12), ('B009', 'Harry Potter 2', 'A04', 1998, 4, 10), ('B010', 'I, Robot', 'A06', 1950, 1, 9), ('B011', 'Clean Agile', 'A03', 2020, 3, 5);
+                    
+                    INSERT INTO MEMBERS VALUES ('M001', 'John Doe', '0123', '2023', 'ACTIVE'), ('M002', 'Jane Smith', '0987', '2023', 'ACTIVE'), ('M003', 'Michael', '0912', '2023', 'SUSPENDED'), ('M004', 'Emily', '0901', '2023', 'ACTIVE'), ('M005', 'David', '0933', '2023', 'ACTIVE'), ('M006', 'Sarah', '0977', '2024', 'ACTIVE'), ('M007', 'James', '0988', '2024', 'ACTIVE'), ('M008', 'Linda', '0922', '2024', 'SUSPENDED');
+                    
+                    INSERT INTO LOANS VALUES 
+                    (1, 'B001', 'M001', '2024-01-10', '2024-01-24', '2024-01-20', 'RETURNED'), 
+                    (2, 'B003', 'M002', '2024-02-01', '2024-02-15', NULL, 'OVERDUE'), 
+                    (3, 'B005', 'M003', '2024-02-15', '2024-03-01', '2024-03-10', 'RETURNED'), 
+                    (4, 'B002', 'M004', '2024-03-10', '2024-03-24', '2024-03-22', 'RETURNED'), 
+                    (5, 'B004', 'M005', '2024-04-01', '2024-04-15', NULL, 'OVERDUE'), 
+                    (6, 'B008', 'M006', '2024-04-15', '2024-04-29', NULL, 'BORROWED'), 
+                    (7, 'B010', 'M007', '2024-05-01', '2024-05-15', '2024-05-14', 'RETURNED'), 
+                    (8, 'B006', 'M008', '2024-05-10', '2024-05-24', NULL, 'BORROWED'),
+                    (9, 'B009', 'M001', '2024-05-20', '2024-06-03', NULL, 'BORROWED'), 
+                    (10, 'B007', 'M002', '2024-06-01', '2024-06-15', NULL, 'BORROWED'), 
+                    (11, 'B006', 'M001', '2024-06-10', '2024-06-24', NULL, 'BORROWED'), 
+                    (12, 'B010', 'M001', '2024-06-12', '2024-06-26', NULL, 'BORROWED');
+                    
+                    INSERT INTO FINES VALUES (2, 2, 15.00, 'Late 20 days', 'UNPAID'), (3, 3, 5.00, 'Late 9 days', 'PAID'), (5, 5, 25.00, 'Late damaged', 'UNPAID');
+                `,
+                practice: [
+                    { q: "Câu 1: Thống kê số lượng sách theo từng thể loại. Hiển thị CategoryName và tổng số lượng tồn kho (SL_SACH).", expectedSQL: "SELECT c.CategoryName, SUM(b.StockQuantity) AS SL_SACH FROM CATEGORIES c JOIN BOOKS b ON c.CategoryID = b.CategoryID GROUP BY c.CategoryName" },
+                    { q: "Câu 2: Lấy danh sách các độc giả (FullName) đang có khoản phạt chưa đóng (UNPAID) và tổng tiền phạt > 10. Hiển thị FullName và TONG_PHAT.", expectedSQL: "SELECT m.FullName, SUM(f.Amount) AS TONG_PHAT FROM MEMBERS m JOIN LOANS l ON m.MemberID = l.MemberID JOIN FINES f ON l.LoanID = f.LoanID WHERE f.PaidStatus = 'UNPAID' GROUP BY m.FullName HAVING SUM(f.Amount) > 10" },
+                    { q: "Câu 3: Tìm tiêu đề (Title) của những cuốn sách chưa từng được ai mượn.", expectedSQL: "SELECT Title FROM BOOKS WHERE BookID NOT IN (SELECT BookID FROM LOANS)" },
+                    { q: "Câu 4: Tìm tên những độc giả (FullName) đã mượn sách có năm xuất bản (PublishYear) cũ nhất trong thư viện.", expectedSQL: "SELECT DISTINCT m.FullName FROM MEMBERS m JOIN LOANS l ON m.MemberID = l.MemberID JOIN BOOKS b ON l.BookID = b.BookID WHERE b.PublishYear = (SELECT MIN(PublishYear) FROM BOOKS)" },
+                    { q: "Câu 5: Tìm mã và tên độc giả (MemberID, FullName) đã mượn TẤT CẢ các cuốn sách thuộc thể loại 'Science Fiction' (CategoryID = 1).", expectedSQL: "SELECT m.MemberID, m.FullName FROM MEMBERS m JOIN LOANS l ON m.MemberID = l.MemberID JOIN BOOKS b ON l.BookID = b.BookID WHERE b.CategoryID = 1 GROUP BY m.MemberID, m.FullName HAVING COUNT(DISTINCT b.BookID) = (SELECT COUNT(BookID) FROM BOOKS WHERE CategoryID = 1)" }
+                ],
+                erdRaw: [
+                    { id: 'CATEGORIES', x: 20, y: 50, rows: ['🔑 CategoryID|pk', 'CategoryName', 'Description'] },
+                    { id: 'AUTHORS', x: 20, y: 250, rows: ['🔑 AuthorID|pk', 'FullName', 'Nationality', 'BirthYear'] },
+                    { id: 'BOOKS', x: 300, y: 120, rows: ['🔑 BookID|pk', 'Title', '@ AuthorID|fk', '# CategoryID|fk', 'PublishYear', 'StockQuantity'] },
+                    { id: 'LOANS', x: 550, y: 120, rows: ['🔑 LoanID|pk', '@ BookID|fk', '# MemberID|fk', 'BorrowDate', 'ReturnDate', 'Status'] },
+                    { id: 'FINES', x: 800, y: 50, rows: ['🔑 FineID|pk', '@ LoanID|fk', 'Amount', 'Reason', 'PaidStatus'] },
+                    { id: 'MEMBERS', x: 800, y: 250, rows: ['🔑 MemberID|pk', 'FullName', 'Phone', 'JoinDate', 'Status'] }
+                ],
+                erdConns: [ 
+                    ['BOOKS-CategoryID', 'CATEGORIES-CategoryID', '#22c55e'], 
+                    ['BOOKS-AuthorID', 'AUTHORS-AuthorID', '#3b82f6'], 
+                    ['LOANS-BookID', 'BOOKS-BookID', '#eab308'], 
+                    ['LOANS-MemberID', 'MEMBERS-MemberID', '#d946ef'], 
+                    ['FINES-LoanID', 'LOANS-LoanID', '#ef4444'] 
+                ]
+            },
+            "flight": {
+                sql: `
+                    CREATE TABLE AIRLINES (AirlineID STRING, AirlineName STRING, Country STRING);
+                    CREATE TABLE AIRPORTS (AirportCode STRING, AirportName STRING, City STRING, Country STRING);
+                    CREATE TABLE AIRCRAFTS (AircraftID STRING, AirlineID STRING, Model STRING, Capacity INT);
+                    CREATE TABLE FLIGHTS (FlightID STRING, AircraftID STRING, OriginCode STRING, DestinationCode STRING, DepartureTime STRING, ArrivalTime STRING, Status STRING);
+                    CREATE TABLE PASSENGERS (PassengerID STRING, FullName STRING, PassportNo STRING, Nationality STRING);
+                    CREATE TABLE TICKETS (TicketID STRING, FlightID STRING, PassengerID STRING, SeatNo STRING, Class STRING, Price NUMBER);
+                    
+                    INSERT INTO AIRLINES VALUES 
+                    ('VN', 'Vietnam Airlines', 'Vietnam'), ('VJ', 'VietJet Air', 'Vietnam'), 
+                    ('QH', 'Bamboo Airways', 'Vietnam'), ('KE', 'Korean Air', 'South Korea'),
+                    ('JL', 'Japan Airlines', 'Japan'), ('SQ', 'Singapore Airlines', 'Singapore');
+                    
+                    INSERT INTO AIRPORTS VALUES 
+                    ('HAN', 'Noi Bai Intl', 'Hanoi', 'Vietnam'), ('SGN', 'Tan Son Nhat Intl', 'Ho Chi Minh', 'Vietnam'),
+                    ('DAD', 'Da Nang Intl', 'Da Nang', 'Vietnam'), ('NRT', 'Narita Intl', 'Tokyo', 'Japan'),
+                    ('ICN', 'Incheon Intl', 'Seoul', 'South Korea'), ('SIN', 'Changi', 'Singapore', 'Singapore');
+                    
+                    INSERT INTO AIRCRAFTS VALUES 
+                    ('VN889', 'VN', 'Boeing 787', 250), ('VN999', 'VN', 'Airbus A350', 280),
+                    ('VJ123', 'VJ', 'Airbus A321', 180), ('VJ456', 'VJ', 'Airbus A320', 150),
+                    ('QH111', 'QH', 'Boeing 777', 300), ('KE222', 'KE', 'Boeing 747', 350);
+                    
+                    INSERT INTO FLIGHTS VALUES 
+                    ('FL001', 'VN889', 'HAN', 'NRT', '2024-07-01 08:00', '2024-07-01 14:30', 'ON_TIME'),
+                    ('FL002', 'VJ123', 'SGN', 'SIN', '2024-07-02 09:15', '2024-07-02 12:15', 'DELAYED'),
+                    ('FL003', 'QH111', 'DAD', 'ICN', '2024-07-03 23:00', '2024-07-04 05:00', 'ON_TIME'),
+                    ('FL004', 'VN999', 'SGN', 'NRT', '2024-07-05 10:00', '2024-07-05 17:50', 'ON_TIME'),
+                    ('FL005', 'KE222', 'ICN', 'HAN', '2024-07-10 00:30', '2024-07-10 03:00', 'CANCELLED'),
+                    ('FL006', 'VN889', 'NRT', 'HAN', '2024-07-15 16:00', '2024-07-15 20:30', 'ON_TIME'),
+                    ('FL007', 'VJ456', 'HAN', 'DAD', '2024-07-20 07:00', '2024-07-20 08:30', 'ON_TIME'),
+                    ('FL008', 'VJ123', 'SIN', 'SGN', '2024-07-22 14:00', '2024-07-22 15:15', 'DELAYED');
+
+                    INSERT INTO PASSENGERS VALUES 
+                    ('P001', 'Alice Johnson', 'A1234567', 'USA'), ('P002', 'Tran Van A', 'C7654321', 'Vietnam'),
+                    ('P003', 'Park Ji Sung', 'K9876543', 'South Korea'), ('P004', 'Maria Garcia', 'E1122334', 'Spain'),
+                    ('P005', 'Kenji Sato', 'J5566778', 'Japan'), ('P006', 'Le Thi B', 'C1122334', 'Vietnam'),
+                    ('P007', 'David Beckham', 'UK998877', 'UK'), ('P008', 'Somchai', 'T5544332', 'Thailand'),
+                    ('P009', 'Anna Smith', 'A9988776', 'USA'), ('P010', 'Nguyen Van C', 'C9988776', 'Vietnam');
+                    
+                    INSERT INTO TICKETS VALUES 
+                    ('T1001', 'FL001', 'P001', '12A', 'ECONOMY', 500.00), ('T1002', 'FL002', 'P002', '2B', 'BUSINESS', 850.50),
+                    ('T1003', 'FL003', 'P003', '1A', 'FIRST', 1200.00), ('T1004', 'FL004', 'P004', '15C', 'ECONOMY', 450.00),
+                    ('T1005', 'FL001', 'P005', '14B', 'ECONOMY', 500.00), ('T1006', 'FL005', 'P006', '3A', 'BUSINESS', 900.00),
+                    ('T1007', 'FL006', 'P007', '1B', 'FIRST', 1500.00), ('T1008', 'FL007', 'P008', '22F', 'ECONOMY', 100.00),
+                    ('T1009', 'FL008', 'P009', '10A', 'ECONOMY', 280.00), ('T1010', 'FL002', 'P010', '5C', 'ECONOMY', 300.00),
+                    ('T1011', 'FL002', 'P001', '15D', 'ECONOMY', 200.00); 
+                `,
+                practice: [
+                    { q: "Câu 1: Thống kê số chuyến bay xuất phát từ mỗi quốc gia. Hiển thị Country và Số chuyến (SL_CHUYEN).", expectedSQL: "SELECT a.Country, COUNT(f.FlightID) AS SL_CHUYEN FROM AIRPORTS a JOIN FLIGHTS f ON a.AirportCode = f.OriginCode GROUP BY a.Country" },
+                    { q: "Câu 2: Tính tổng doanh thu vé của hãng 'Vietnam Airlines'. Hiển thị AirlineName và TONG_DOANH_THU.", expectedSQL: "SELECT al.AirlineName, SUM(t.Price) AS TONG_DOANH_THU FROM AIRLINES al JOIN AIRCRAFTS ac ON al.AirlineID = ac.AirlineID JOIN FLIGHTS f ON ac.AircraftID = f.AircraftID JOIN TICKETS t ON f.FlightID = t.FlightID WHERE al.AirlineName = 'Vietnam Airlines' GROUP BY al.AirlineName" },
+                    { q: "Câu 3: Liệt kê tên hành khách (FullName) người Việt Nam chưa từng mua vé khoang 'BUSINESS'.", expectedSQL: "SELECT FullName FROM PASSENGERS WHERE Nationality = 'Vietnam' AND PassengerID NOT IN (SELECT PassengerID FROM TICKETS WHERE Class = 'BUSINESS')" },
+                    { q: "Câu 4: Tìm chuyến bay (FlightID, OriginCode) có giá vé trung bình cao nhất.", expectedSQL: "SELECT f.FlightID, f.OriginCode FROM FLIGHTS f JOIN TICKETS t ON f.FlightID = t.FlightID GROUP BY f.FlightID, f.OriginCode HAVING AVG(t.Price) = (SELECT MAX(avg_p) FROM (SELECT AVG(Price) AS avg_p FROM TICKETS GROUP BY FlightID) tmp)" },
+                    { q: "Câu 5: Tìm mã và tên hành khách (PassengerID, FullName) đã bay trên ÍT NHẤT 2 hãng hàng không khác nhau.", expectedSQL: "SELECT p.PassengerID, p.FullName FROM PASSENGERS p JOIN TICKETS t ON p.PassengerID = t.PassengerID JOIN FLIGHTS f ON t.FlightID = f.FlightID JOIN AIRCRAFTS ac ON f.AircraftID = ac.AircraftID GROUP BY p.PassengerID, p.FullName HAVING COUNT(DISTINCT ac.AirlineID) >= 2" }
+                ],
+                erdRaw: [
+                    { id: 'AIRLINES', x: 20, y: 50, rows: ['🔑 AirlineID|pk', 'AirlineName', 'Country'] },
+                    { id: 'AIRCRAFTS', x: 280, y: 50, rows: ['🔑 AircraftID|pk', '@ AirlineID|fk', 'Model', 'Capacity'] },
+                    { id: 'FLIGHTS', x: 550, y: 150, rows: ['🔑 FlightID|pk', '@ AircraftID|fk', '@ OriginCode|fk', '@ DestinationCode|fk', 'DepartureTime', 'Status'] },
+                    { id: 'AIRPORTS', x: 280, y: 300, rows: ['🔑 AirportCode|pk', 'AirportName', 'City', 'Country'] },
+                    { id: 'TICKETS', x: 850, y: 50, rows: ['🔑 TicketID|pk', '@ FlightID|fk', '@ PassengerID|fk', 'SeatNo', 'Class', 'Price'] },
+                    { id: 'PASSENGERS', x: 850, y: 300, rows: ['🔑 PassengerID|pk', 'FullName', 'PassportNo', 'Nationality'] }
+                ],
+                erdConns: [ 
+                    ['AIRCRAFTS-AirlineID', 'AIRLINES-AirlineID', '#3b82f6'], 
+                    ['FLIGHTS-AircraftID', 'AIRCRAFTS-AircraftID', '#eab308'], 
+                    ['FLIGHTS-OriginCode', 'AIRPORTS-AirportCode', '#22c55e'], 
+                    ['FLIGHTS-DestinationCode', 'AIRPORTS-AirportCode', '#22c55e'], 
+                    ['TICKETS-FlightID', 'FLIGHTS-FlightID', '#d946ef'], 
+                    ['TICKETS-PassengerID', 'PASSENGERS-PassengerID', '#ef4444'] 
+                ]
+            },
+            "zoo": {
+                sql: `
+                    CREATE TABLE ZONES (ZoneID INT, ZoneName STRING, ManagerName STRING);
+                    CREATE TABLE ENCLOSURES (EnclosureID INT, ZoneID INT, Name STRING, Climate STRING, Size_sqm INT);
+                    CREATE TABLE DIETS (DietID INT, DietName STRING, DailyCost NUMBER, Supplier STRING);
+                    CREATE TABLE ANIMALS (AnimalID STRING, Name STRING, Species STRING, Gender STRING, BirthDate STRING, EnclosureID INT, DietID INT);
+                    CREATE TABLE KEEPERS (KeeperID STRING, FullName STRING, HireDate STRING, Specialization STRING);
+                    CREATE TABLE ASSIGNMENTS (AssignmentID INT, KeeperID STRING, EnclosureID INT, Shift STRING, Role STRING);
+                    
+                    INSERT INTO ZONES VALUES 
+                    (1, 'African Safari', 'John Hammond'), (2, 'Arctic Realm', 'Elsa Frozen'),
+                    (3, 'Reptile Domain', 'Steve Irwin'), (4, 'Jungle Trek', 'Jane Goodall');
+                    
+                    INSERT INTO ENCLOSURES VALUES 
+                    (1, 1, 'Lion Pride Area', 'Tropical', 5000), (2, 1, 'Giraffe Plains', 'Tropical', 7000),
+                    (3, 2, 'Penguin Cove', 'Polar', 800), (4, 2, 'Polar Bear Den', 'Polar', 1500),
+                    (5, 3, 'Snake House', 'Arid', 1200), (6, 4, 'Monkey Canopy', 'Humid', 3000);
+                    
+                    INSERT INTO DIETS VALUES 
+                    (1, 'Carnivore Heavy', 55.00, 'Meat Co.'), (2, 'Herbivore Mix', 20.00, 'Green Farms'),
+                    (3, 'Fish Diet', 35.00, 'Ocean Catch'), (4, 'Insectivore Blend', 15.00, 'Bug Works'),
+                    (5, 'Primate Fruits', 25.00, 'Tropical Fruits Inc.');
+                    
+                    INSERT INTO ANIMALS VALUES 
+                    ('A001', 'Simba', 'Lion', 'MALE', '2018-05-12', 1, 1),
+                    ('A002', 'Nala', 'Lion', 'FEMALE', '2019-07-14', 1, 1),
+                    ('A003', 'Kowalski', 'Emperor Penguin', 'MALE', '2020-11-20', 3, 3),
+                    ('A004', 'Skipper', 'Emperor Penguin', 'MALE', '2019-12-01', 3, 3),
+                    ('A005', 'Kaa', 'Python', 'FEMALE', '2015-03-08', 5, 1),
+                    ('A006', 'Caesar', 'Chimpanzee', 'MALE', '2012-08-01', 6, 5),
+                    ('A007', 'Luna', 'Chimpanzee', 'FEMALE', '2016-11-11', 6, 5),
+                    ('A008', 'Gerry', 'Giraffe', 'MALE', '2017-06-18', 2, 2),
+                    ('A009', 'Melman', 'Giraffe', 'MALE', '2015-04-20', 2, 2),
+                    ('A010', 'Nanook', 'Polar Bear', 'MALE', '2014-01-15', 4, 3);
+                    
+                    INSERT INTO KEEPERS VALUES 
+                    ('K001', 'David Attenborough', '2010-01-01', 'Mammals'),
+                    ('K002', 'Bindi Irwin', '2018-05-30', 'Reptiles'),
+                    ('K003', 'Jack Hanna', '2015-09-22', 'Birds'),
+                    ('K004', 'Kevin Richardson', '2014-11-11', 'Carnivores'),
+                    ('K005', 'Dian Fossey', '2011-08-15', 'Primates'),
+                    ('K006', 'Bear Grylls', '2020-02-20', 'Generalist');
+                    
+                    INSERT INTO ASSIGNMENTS VALUES 
+                    (1, 'K001', 2, 'MORNING', 'Lead Feeder'), (2, 'K004', 1, 'MORNING', 'Handler'),
+                    (3, 'K004', 1, 'AFTERNOON', 'Observer'), (4, 'K003', 3, 'MORNING', 'Cleaner'),
+                    (5, 'K002', 5, 'AFTERNOON', 'Handler'), (6, 'K005', 6, 'MORNING', 'Behaviorist'),
+                    (7, 'K006', 4, 'NIGHT', 'Security'), (8, 'K003', 3, 'NIGHT', 'Monitor'),
+                    (9, 'K001', 3, 'MORNING', 'Support');
+                `,
+                practice: [
+                    { q: "Câu 1: Thống kê số lượng động vật theo từng đới khí hậu. Hiển thị Climate và SL_DONGVAT.", expectedSQL: "SELECT e.Climate, COUNT(a.AnimalID) AS SL_DONGVAT FROM ENCLOSURES e JOIN ANIMALS a ON e.EnclosureID = a.EnclosureID GROUP BY e.Climate" },
+                    { q: "Câu 2: Tìm Keeper (FullName) làm ca 'MORNING' ở nhiều hơn 1 chuồng (EnclosureID).", expectedSQL: "SELECT k.FullName FROM KEEPERS k JOIN ASSIGNMENTS a ON k.KeeperID = a.KeeperID WHERE a.Shift = 'MORNING' GROUP BY k.FullName HAVING COUNT(DISTINCT a.EnclosureID) > 1" },
+                    { q: "Câu 3: Liệt kê tên các con vật (Name, Species) chưa từng ăn thức ăn do 'Meat Co.' cung cấp.", expectedSQL: "SELECT Name, Species FROM ANIMALS WHERE DietID NOT IN (SELECT DietID FROM DIETS WHERE Supplier = 'Meat Co.')" },
+                    { q: "Câu 4: Tìm khu vực (ZoneName) có tổng chi phí thức ăn hàng ngày (DailyCost) cao nhất.", expectedSQL: "SELECT z.ZoneName FROM ZONES z JOIN ENCLOSURES e ON z.ZoneID = e.ZoneID JOIN ANIMALS a ON e.EnclosureID = a.EnclosureID JOIN DIETS d ON a.DietID = d.DietID GROUP BY z.ZoneName HAVING SUM(d.DailyCost) = (SELECT MAX(total_cost) FROM (SELECT SUM(d2.DailyCost) AS total_cost FROM ENCLOSURES e2 JOIN ANIMALS a2 ON e2.EnclosureID = a2.EnclosureID JOIN DIETS d2 ON a2.DietID = d2.DietID GROUP BY e2.ZoneID) tmp)" },
+                    { q: "Câu 5: Tìm mã và tên Keeper (KeeperID, FullName) KHÔNG được phân công chăm sóc bất kỳ con 'Lion' nào.", expectedSQL: "SELECT KeeperID, FullName FROM KEEPERS WHERE KeeperID NOT IN (SELECT asg.KeeperID FROM ASSIGNMENTS asg JOIN ANIMALS an ON asg.EnclosureID = an.EnclosureID WHERE an.Species = 'Lion')" }
+                ],
+                erdRaw: [
+                    { id: 'ZONES', x: 20, y: 50, rows: ['🔑 ZoneID|pk', 'ZoneName', 'ManagerName'] },
+                    { id: 'ENCLOSURES', x: 280, y: 50, rows: ['🔑 EnclosureID|pk', '@ ZoneID|fk', 'Name', 'Climate', 'Size_sqm'] },
+                    { id: 'ANIMALS', x: 550, y: 50, rows: ['🔑 AnimalID|pk', 'Name', 'Species', '@ EnclosureID|fk', '@ DietID|fk'] },
+                    { id: 'DIETS', x: 820, y: 50, rows: ['🔑 DietID|pk', 'DietName', 'DailyCost', 'Supplier'] },
+                    { id: 'KEEPERS', x: 20, y: 250, rows: ['🔑 KeeperID|pk', 'FullName', 'Specialization'] },
+                    { id: 'ASSIGNMENTS', x: 280, y: 250, rows: ['🔑 AssignmentID|pk', '@ KeeperID|fk', '@ EnclosureID|fk', 'Shift', 'Role'] }
+                ],
+                erdConns: [ 
+                    ['ENCLOSURES-ZoneID', 'ZONES-ZoneID', '#3b82f6'], 
+                    ['ANIMALS-EnclosureID', 'ENCLOSURES-EnclosureID', '#22c55e'], 
+                    ['ANIMALS-DietID', 'DIETS-DietID', '#eab308'], 
+                    ['ASSIGNMENTS-EnclosureID', 'ENCLOSURES-EnclosureID', '#22c55e'], 
+                    ['ASSIGNMENTS-KeeperID', 'KEEPERS-KeeperID', '#d946ef'] 
+                ]
+            },
+            "car": {
+                sql: `
+                    CREATE TABLE BRANDS (BrandID INT, BrandName STRING, Country STRING);
+                    CREATE TABLE MODELS (ModelID INT, BrandID INT, ModelName STRING, BodyType STRING);
+                    CREATE TABLE CARS (CarID STRING, ModelID INT, Year INT, Color STRING, Price NUMBER, Status STRING);
+                    CREATE TABLE CUSTOMERS (CustomerID STRING, FullName STRING, Phone STRING, Address STRING);
+                    CREATE TABLE EMPLOYEES (EmployeeID STRING, FullName STRING, Position STRING);
+                    CREATE TABLE TRANSACTIONS (TransactionID INT, CarID STRING, CustomerID STRING, EmployeeID STRING, SaleDate STRING, FinalPrice NUMBER, PaymentMethod STRING);
+                    
+                    INSERT INTO BRANDS VALUES 
+                    (1, 'Toyota', 'Japan'), (2, 'Ford', 'USA'), (3, 'Mercedes-Benz', 'Germany'),
+                    (4, 'BMW', 'Germany'), (5, 'Tesla', 'USA'), (6, 'Honda', 'Japan');
+                    
+                    INSERT INTO MODELS VALUES 
+                    (1, 1, 'Camry', 'Sedan'), (2, 1, 'RAV4', 'SUV'), (3, 2, 'Mustang', 'Coupe'),
+                    (4, 2, 'Ranger', 'Pickup'), (5, 3, 'C-Class', 'Sedan'), (6, 4, 'X5', 'SUV'),
+                    (7, 5, 'Model 3', 'Sedan'), (8, 6, 'Civic', 'Sedan');
+                    
+                    INSERT INTO CARS VALUES 
+                    ('C001', 1, 2023, 'Black', 30000, 'AVAILABLE'), ('C002', 3, 2022, 'Red', 45000, 'SOLD'),
+                    ('C003', 5, 2024, 'White', 55000, 'AVAILABLE'), ('C004', 6, 2023, 'Blue', 65000, 'SOLD'),
+                    ('C005', 7, 2023, 'White', 40000, 'IN_MAINTENANCE'), ('C006', 2, 2024, 'Silver', 35000, 'AVAILABLE'),
+                    ('C007', 4, 2022, 'Orange', 28000, 'SOLD'), ('C008', 8, 2021, 'Grey', 22000, 'AVAILABLE'),
+                    ('C009', 1, 2024, 'Black', 31000, 'AVAILABLE'), ('C010', 5, 2023, 'Black', 58000, 'SOLD');
+                    
+                    INSERT INTO CUSTOMERS VALUES 
+                    ('CUST01', 'Michael Scott', '555-1234', 'Scranton, PA'), ('CUST02', 'Dwight Schrute', '555-5678', 'Schrute Farms'),
+                    ('CUST03', 'Jim Halpert', '555-8765', 'Philadelphia, PA'), ('CUST04', 'Pam Beesly', '555-4321', 'Scranton, PA'),
+                    ('CUST05', 'Stanley Hudson', '555-1122', 'Florida'), ('CUST06', 'Andy Bernard', '555-3344', 'Cornell'),
+                    ('CUST07', 'Angela Martin', '555-9988', 'Scranton, PA'), ('CUST08', 'Kevin Malone', '555-0000', 'Scranton, PA');
+                    
+                    INSERT INTO EMPLOYEES VALUES 
+                    ('EMP01', 'Todd Packer', 'Senior Sales'), ('EMP02', 'Phyllis Vance', 'Sales Agent'),
+                    ('EMP03', 'Ryan Howard', 'Junior Sales'), ('EMP04', 'Kelly Kapoor', 'Customer Service'),
+                    ('EMP05', 'Toby Flenderson', 'Finance Manager');
+                    
+                    INSERT INTO TRANSACTIONS VALUES 
+                    (1, 'C002', 'CUST01', 'EMP01', '2023-09-15', 44000.00, 'BANK_TRANSFER'),
+                    (2, 'C004', 'CUST03', 'EMP02', '2023-11-02', 63500.00, 'FINANCE'),
+                    (3, 'C007', 'CUST02', 'EMP01', '2024-01-20', 27000.00, 'CASH'),
+                    (4, 'C010', 'CUST06', 'EMP03', '2024-03-10', 57000.00, 'FINANCE'),
+                    (5, 'C005', 'CUST08', 'EMP02', '2024-04-05', 39500.00, 'BANK_TRANSFER'),
+                    (6, 'C006', 'CUST01', 'EMP03', '2024-05-01', 34000.00, 'FINANCE'), 
+                    (7, 'C001', 'CUST04', 'EMP01', '2024-06-01', 29000.00, 'CASH'),
+                    (8, 'C003', 'CUST07', 'EMP01', '2024-06-15', 54000.00, 'CASH'),
+                    (9, 'C008', 'CUST08', 'EMP01', '2024-07-01', 21000.00, 'CASH');
+                `,
+                practice: [
+                    { q: "Câu 1: Thống kê tổng doanh thu bán xe (FinalPrice) theo từng thương hiệu (BrandName).", expectedSQL: "SELECT b.BrandName, SUM(t.FinalPrice) AS TONG_DOANH_THU FROM BRANDS b JOIN MODELS m ON b.BrandID = m.BrandID JOIN CARS c ON m.ModelID = c.ModelID JOIN TRANSACTIONS t ON c.CarID = t.CarID GROUP BY b.BrandName" },
+                    { q: "Câu 2: Liệt kê tên nhân viên (FullName) đã bán được từ 2 xe trở lên bằng 'FINANCE'.", expectedSQL: "SELECT e.FullName FROM EMPLOYEES e JOIN TRANSACTIONS t ON e.EmployeeID = t.EmployeeID WHERE t.PaymentMethod = 'FINANCE' GROUP BY e.FullName HAVING COUNT(t.TransactionID) >= 2" },
+                    { q: "Câu 3: Tìm những khách hàng chưa từng mua mẫu xe nào có BodyType là 'SUV'.", expectedSQL: "SELECT FullName FROM CUSTOMERS WHERE CustomerID NOT IN (SELECT t.CustomerID FROM TRANSACTIONS t JOIN CARS c ON t.CarID = c.CarID JOIN MODELS m ON c.ModelID = m.ModelID WHERE m.BodyType = 'SUV')" },
+                    { q: "Câu 4: Tìm chiếc xe (CarID) bán với mức giảm giá cao nhất (Price - FinalPrice lớn nhất).", expectedSQL: "SELECT c.CarID FROM CARS c JOIN TRANSACTIONS t ON c.CarID = t.CarID WHERE (c.Price - t.FinalPrice) = (SELECT MAX(c2.Price - t2.FinalPrice) FROM CARS c2 JOIN TRANSACTIONS t2 ON c2.CarID = t2.CarID)" },
+                    { q: "Câu 5: Tìm nhân viên (EmployeeID, FullName) đã bán xe cho TẤT CẢ khách hàng ở 'Scranton, PA'.", expectedSQL: "SELECT e.EmployeeID, e.FullName FROM EMPLOYEES e JOIN TRANSACTIONS t ON e.EmployeeID = t.EmployeeID JOIN CUSTOMERS c ON t.CustomerID = c.CustomerID WHERE c.Address = 'Scranton, PA' GROUP BY e.EmployeeID, e.FullName HAVING COUNT(DISTINCT c.CustomerID) = (SELECT COUNT(CustomerID) FROM CUSTOMERS WHERE Address = 'Scranton, PA')" }
+                ],
+                erdRaw: [
+                    { id: 'BRANDS', x: 20, y: 50, rows: ['🔑 BrandID|pk', 'BrandName', 'Country'] },
+                    { id: 'MODELS', x: 280, y: 50, rows: ['🔑 ModelID|pk', '@ BrandID|fk', 'ModelName', 'BodyType'] },
+                    { id: 'CARS', x: 550, y: 50, rows: ['🔑 CarID|pk', '@ ModelID|fk', 'Year', 'Color', 'Price', 'Status'] },
+                    { id: 'TRANSACTIONS', x: 550, y: 250, rows: ['🔑 TransactionID|pk', '@ CarID|fk', '@ CustomerID|fk', '@ EmployeeID|fk', 'SaleDate', 'FinalPrice'] },
+                    { id: 'CUSTOMERS', x: 280, y: 250, rows: ['🔑 CustomerID|pk', 'FullName', 'Phone', 'Address'] },
+                    { id: 'EMPLOYEES', x: 820, y: 250, rows: ['🔑 EmployeeID|pk', 'FullName', 'Position'] }
+                ],
+                erdConns: [ 
+                    ['MODELS-BrandID', 'BRANDS-BrandID', '#3b82f6'], 
+                    ['CARS-ModelID', 'MODELS-ModelID', '#22c55e'], 
+                    ['TRANSACTIONS-CarID', 'CARS-CarID', '#eab308'], 
+                    ['TRANSACTIONS-CustomerID', 'CUSTOMERS-CustomerID', '#d946ef'], 
+                    ['TRANSACTIONS-EmployeeID', 'EMPLOYEES-EmployeeID', '#ef4444'] 
+                ]
+            }
+        };
+
+        // ================= NGÂN HÀNG TRẮC NGHIỆM =================
+        const fullQuiz = [
+             { q: "1. Mô hình phổ biến để xây dựng CSDL quan hệ là:", o: ["A. Mô hình phân cấp", "B. Mô hình dữ liệu quan hệ", "C. Mô hình hướng đối tượng", "D. Mô hình cơ sở quan hệ"], a: 1, expl: "Mô hình dữ liệu quan hệ (Relational Model) do E.F. Codd đề xuất năm 1970 là nền tảng phổ biến nhất cho các hệ quản trị CSDL hiện đại." },
+            { q: "2. Các khái niệm dùng để mô tả các yếu tố nào sẽ tạo thành mô hình dữ liệu quan hệ?", o: ["A. Cấu trúc dữ liệu", "B. Các ràng buộc dữ liệu", "C. Các thao tác, phép toán trên dữ liệu", "D. Tất cả câu trên"], a: 3, expl: "Một mô hình dữ liệu hoàn chỉnh phải bao gồm 3 thành phần: Cấu trúc (để lưu trữ), Ràng buộc (để đảm bảo tính đúng đắn) và Thao tác (để truy vấn, cập nhật)." },
+            { q: "3. Trong mô hình quan hệ, về mặt cấu trúc thì dữ liệu được thể hiện trong các:", o: ["A. Cột (Field)", "B. Hàng (Record)", "C. Bảng (Table)", "D. Báo cáo (Report)"], a: 2, expl: "Trong mô hình quan hệ, dữ liệu được tổ chức thành các quan hệ, về mặt vật lý trực quan được thể hiện dưới dạng các Bảng (Table) gồm hàng và cột." },
+            { q: "4. Thao tác trên dữ liệu có thể là:", o: ["A. Sửa bản ghi", "B. Thêm bản ghi", "C. Xoá bản ghi", "D. Tất cả đáp án trên"], a: 3, expl: "Thao tác cập nhật dữ liệu (DML) bao gồm 3 hành động chính: Thêm (Insert), Sửa (Update) và Xóa (Delete)." },
+            { q: "5. Phát biểu nào về hệ QTCSDL quan hệ là đúng?", o: ["A. Phần mềm dùng để xây dựng các CSDL quan hệ", "B. Phần mềm dùng để tạo lập, cập nhật và khai thác CSDL quan hệ", "C. Phần mềm Microsoft Access", "D. Phần mềm để giải bài toán quản lí chứa quan hệ giữa các dữ liệu"], a: 1, expl: "Hệ quản trị CSDL (DBMS) là phần mềm cung cấp môi trường để tạo lập (DDL), cập nhật và khai thác (DML/DQL) cơ sở dữ liệu." },
+            { q: "6. Phát biểu nào trong các phát biểu sau là sai khi nói về miền?", o: ["A. Các miền của các thuộc tính khác nhau không nhất thiết phải khác nhau", "B. Mỗi một thuộc tính có thể có hai miền trở lên", "C. Hai thuộc tính khác nhau có thể cùng miền", "D. Miền của thuộc tính họ tên thường là kiểu text"], a: 1, expl: "Sai ở B. Trong mô hình quan hệ, mỗi thuộc tính chỉ được định nghĩa trên MỘT miền (Domain) duy nhất (ví dụ: tuổi chỉ có miền là số nguyên)." },
+            { q: "7. Đặc điểm nào sau đây không là đặc trưng của một quan hệ trong hệ CSDL quan hệ?", o: ["A. Các bộ là phân biệt và thứ tự các bộ không quan trọng", "B. Quan hệ không có thuộc tính đa trị hay phức tạp", "C. Mỗi thuộc tính có một tên phân biệt và thứ tự các thuộc tính là quan trọng", "D. Tên của các quan hệ có thể trùng nhau"], a: 3, expl: "Sai ở D. Tên của các quan hệ (bảng) trong cùng một cơ sở dữ liệu phải là duy nhất, không được trùng nhau." },
+            { q: "8. Phát biểu nào sai trong các phát biểu sau khi nói về khoá chính?", o: ["A. Một bảng có thể có nhiều khoá chính", "B. Mỗi bảng có ít nhất một khoá", "C. Xác định khoá phụ thuộc quan hệ logic chứ không phụ thuộc giá trị", "D. Nên chọn khoá chính là khoá có ít thuộc tính nhất"], a: 0, expl: "Sai ở A. Một bảng (quan hệ) có thể có nhiều khóa ứng viên (Candidate Key), nhưng chỉ được chọn duy nhất MỘT khóa làm Khóa chính (Primary Key)." },
+            { q: "9. Giả sử một bảng có 2 trường SOBH (số bảo hiểm) và HOTEN (họ tên) thì nên chọn SOBH làm khoá chính vì:", o: ["A. Trường SOBH là duy nhất, trong khi HOTEN không phải là duy nhất", "B. Trường SOBH là kiểu số, HOTEN không phải kiểu số", "C. Trường SOBH đứng trước trường HOTEN", "D. Trường SOBH là trường ngắn hơn"], a: 0, expl: "Khóa chính phải mang tính duy nhất để phân biệt các bộ. Họ tên có thể trùng nhau, nhưng số bảo hiểm thì mỗi người chỉ có một số riêng biệt." },
+            { q: "10. Cho các bảng: DanhMucSach(MaSach, TenSach, MaLoai), LoaiSach(MaLoai, LoaiSach), HoaDon(MaSach, SoLuong, DonGia). Để biết giá một quyển sách cần những bảng nào?", o: ["A. HoaDon", "B. DanhMucSach, HoaDon", "C. DanhMucSach, LoaiSach", "D. HoaDon, LoaiSach"], a: 1, expl: "Giá (DonGia) nằm ở bảng HoaDon. Tên sách (để biết quyển sách nào) nằm ở DanhMucSach. Ta cần kết nối 2 bảng này qua MaSach." },
+            { q: "11. Trường khóa chính là trường:", o: ["[a] Single Key", "[b] Unique Key", "[c] First Key", "[d] Primary Key"], a: 3, expl: "Khóa chính trong tiếng Anh thuật ngữ là Primary Key (PK)." },
+            { q: "12. Thế nào là cơ sở dữ liệu quan hệ?", o: ["[a] Cơ sở dữ liệu được xây dựng dựa trên mô hình dữ liệu quan hệ", "[b] Cơ sở dữ liệu dùng để tạo lập, cập nhật và khai thác CSDL quan hệ", "[c] CSDL xây dựng dựa trên mô hình DL quan hệ và khai thác CSDL", "[d] CSDL dùng để tạo lập, cập nhật khai thác dựa trên mô hình DL quan hệ"], a: 0, expl: "Cơ sở dữ liệu quan hệ đơn giản là một CSDL được tổ chức và xây dựng dựa trên các nguyên tắc của mô hình dữ liệu quan hệ (dùng bảng)." },
+            { q: "13. Liên kết giữa các bảng được dựa trên:", o: ["[a] Thuộc tính khóa", "[b] Các thuộc tính trùng tên nhau giữa các bảng", "[c] Ý định của người quản trị hệ CSDL", "[d] Ý định ghép các bảng thành một bảng"], a: 0, expl: "Các bảng liên kết với nhau qua các thuộc tính khóa (Khóa ngoại của bảng này tham chiếu đến Khóa chính của bảng kia)." },
+            { q: "14. Các bước chính để tạo CSDL:", o: ["[a] Tạo bảng; Chọn khóa chính; Đặt tên bảng và lưu; Tạo liên kết", "[b] Tạo bảng; Chọn khóa chính; Đặt tên bảng và lưu cấu trúc", "[c] Tạo bảng; Chọn khóa chính; Lưu cấu trúc; Tạo liên kết; cập nhật khai thác", "[d] Tạo bảng; Chọn khóa chính; Đặt tên bảng; Tạo liên kết bảng"], a: 0, expl: "Quy trình thiết kế vật lý tiêu chuẩn: Tạo cấu trúc bảng -> Chỉ định PK -> Lưu lại -> Thiết lập Relationships (Liên kết)." },
+            { q: "15. An toàn dữ liệu có thể hiểu là?", o: ["[a] Dễ dàng cho công việc bảo trì dữ liệu", "[b] Ngăn chặn các truy nhập trái phép, sai quy định từ trong ra hoặc từ ngoài vào", "[c] Thống nhất các tiêu chuẩn, thủ tục bảo vệ an toàn dữ liệu", "[d] Tính nhất quán và toàn vẹn dữ liệu"], a: 1, expl: "An toàn dữ liệu (Security) là việc ngăn chặn sự truy cập, phá hoại hoặc đánh cắp dữ liệu trái phép." },
+            { q: "16. Mô hình ngoài là?", o: ["[a] Nội dung thông tin của toàn bộ CSDL", "[b] Nội dung thông tin của toàn bộ CSDL dưới cách nhìn của người sử dụng", "[c] Nội dung thông tin của một phần cơ sở dữ liệu", "[d] Nội dung thông tin của một phần dữ liệu dưới cách nhìn của người sử dụng"], a: 1, expl: "Mô hình ngoài (External Level/View) là khung nhìn của NSD, ẩn đi các chi tiết lưu trữ phức tạp bên dưới." },
+            { q: "17. Mô hình trong là?", o: ["[a] Là một trong các mô hình biểu diễn CSDL dưới dạng lưu trữ vật lý", "[b] Mô hình biểu diễn cơ sở dữ liệu trìu tượng ở mức quan niệm", "[c] Có nhiều cách biểu diễn CSDL dưới dạng lưu trữ vật lý", "[d] Mô hình lưu trữ vật lý dữ liệu"], a: 3, expl: "Mô hình trong (Internal Level) mô tả cách thức dữ liệu thực sự được lưu trữ trên các thiết bị nhớ vật lý." },
+            { q: "18. Mục tiêu của cơ sở dữ liệu là?", o: ["[a] Không làm thay đổi chiến lược truy nhập cơ sở dữ liệu", "[b] Bảo đảm tính độc lập dữ liệu", "[c] Không làm thay đổi cấu trúc lưu trữ dữ liệu", "[d] Dữ liệu chỉ được biểu diễn, mô tả một cách duy nhất"], a: 1, expl: "Mục tiêu cốt lõi của việc tiếp cận CSDL so với quản lý file truyền thống là đạt được sự Độc lập dữ liệu (mức logic và vật lý)." },
+            { q: "19. Ràng buộc giải tích?", o: ["[a] Quy tắc biểu diễn cấu trúc dữ liệu", "[b] Mối quan hệ giữa các thuộc tính được biểu diễn bằng các biểu thức toán học", "[c] Mô tả tính chất của các thuộc tính khi tạo lập CSDL", "[d] Các phép toán đại số quan hệ"], a: 1, expl: "Ràng buộc giải tích là các ràng buộc được thể hiện qua các công thức, phương trình, biểu thức toán học tính toán giữa các trường." },
+            { q: "20. Ràng buộc logic?", o: ["[a] Mối quan hệ giữa các thuộc tính được biểu diễn bằng các phụ thuộc hàm", "[b] Mối quan hệ giữa các thuộc tính được biểu diễn bằng các biểu thức toán học", "[c] Các phép so sánh", "[d] Các phép toán quan hệ"], a: 0, expl: "Ràng buộc logic thường liên quan đến phụ thuộc hàm (A xác định B), các quy tắc logic nghiệp vụ không thể hiện bằng phép toán đại số thuần túy." },
+            { q: "21. Mô hình CSDL phân cấp là mô hình?", o: ["[a] Dữ liệu được biểu diễn bằng con trỏ", "[b] Dữ liệu được biểu diễn bằng mối quan hệ thực thể", "[c] Dữ liệu được biểu diễn bằng bảng", "[d] Dữ liệu được biểu diễn bằng cấu trúc cây"], a: 3, expl: "Mô hình phân cấp (Hierarchical Model) tổ chức dữ liệu theo dạng cấu trúc cây (mỗi nút con chỉ có một nút cha)." },
+            { q: "22. Khi thao tác bằng ngôn ngữ thao tác dữ liệu trên CSDL phân cấp?", o: ["[a] Đảm bảo tính độc lập của dữ liệu", "[b] Đảm bảo tính ổn định", "[c] Đảm bảo tính toàn vẹn của dữ liệu", "[d] Có nhiều khả năng xẩy ra dị thường thông tin"], a: 3, expl: "Do cấu trúc cứng nhắc, việc thêm/xóa dữ liệu trong mô hình phân cấp rất dễ dẫn đến dị thường (ví dụ: xóa nút cha sẽ mất luôn cả các nút con)." },
+            { q: "23. Đặc trưng cấu trúc của mô hình mạng là?", o: ["[a] Chứa các liên kết một - một và một - nhiều", "[b] Chứa các liên kết một - một, một - nhiều và nhiều - nhiều", "[c] Chứa các liên kết một - một, một - nhiều và nhiều - nhiều", "[d] Chứa các liên kết nhiều - một và một - nhiều"], a: 1, expl: "Mô hình mạng (Network Model) mở rộng mô hình phân cấp bằng cách cho phép một bản ghi con có nhiều bản ghi cha, hỗ trợ đa dạng loại liên kết." },
+            { q: "24. Trong CSDL mạng, khi thực hiện các phép tìm kiếm?", o: ["[a] Không phức tạp", "[b] CSDL càng lớn thì tìm kiếm càng phức tạp", "[c] Câu hỏi và kết quả các câu hỏi tìm kiếm thường đối xứng với nhau", "[d] Câu hỏi và kết quả các câu hỏi tìm kiếm không đối xứng với nhau"], a: 3, expl: "Việc duyệt đồ thị mạng phụ thuộc nhiều vào điểm bắt đầu (con trỏ), do đó câu hỏi và kết quả tìm kiếm mang tính không đối xứng định hướng." },
+            { q: "25. Trong mô hình cơ sở dữ liệu quan hệ?", o: ["[a] Thứ tự của các cột là quan trọng", "[b] Thứ tự của các cột là không quan trọng", "[c] Thứ tự của các hàng là quan trọng", "[d] Thứ tự của các hàng là không quan trọng"], a: 1, expl: "Trong lý thuyết tập hợp của mô hình quan hệ, một quan hệ là một tập các bộ (không quan trọng thứ tự hàng) và tập các thuộc tính (không quan trọng thứ tự cột)." },
+            { q: "26. Dị thường thông tin có thể?", o: ["[a] Dữ liệu nhất quán và toàn vẹn", "[b] Không xuất hiện mâu thuẫn thông tin", "[c] Thừa thiếu thông tin trong lưu trữ", "[d] Phản ánh đúng hiện thực khách quan dữ liệu"], a: 2, expl: "Dị thường (Anomaly) gây ra sự dư thừa (trùng lặp vô ích) hoặc thiếu hụt thông tin (không thể thêm dữ liệu nếu thiếu key)." },
+            { q: "27. Ưu điểm của cơ sở dữ liệu là?", o: ["[a] Giảm dư thừa, nhất quán và toàn vẹn của dữ liệu", "[b] Các thuộc tính được mô tả trong nhiều tệp dữ liệu khác nhau", "[c] Khả năng xuất hiện mâu thuẫn và không nhất quán dữ liệu", "[d] Xuất hiện dị thường thông tin"], a: 0, expl: "So với hệ thống File, CSDL tập trung kiểm soát tốt việc dư thừa, đảm bảo tính nhất quán và toàn vẹn qua các ràng buộc." },
+            { q: "28. Cần thiết phải chuẩn hoá dữ liệu vì?", o: ["[a] Khi thực hiện các phép lưu trữ trên các quan hệ chưa được chuẩn hoá thường xuất hiện các dị thường thông tin", "[b] Khi thực hiện các phép tách - kết nối tự nhiên các quan hệ", "[c] Khi thực hiện các phép tìm kiếm, xuất hiện các dị thường thông tin", "[d] Giá trị khoá nhận giá trị null hay giá trị không xác định"], a: 0, expl: "Chuẩn hóa là quá trình thiết kế để loại bỏ các dị thường thêm/xóa/sửa xảy ra ở các quan hệ cấu trúc kém." },
+            { q: "29. Mục tiêu của chuẩn hoá dữ liệu là?", o: ["[a] Đảm bảo tính bảo mật dữ liệu", "[b] Triệt tiêu mức cao nhất khả năng xuất hiện các dị thường thông tin", "[c] Đảm bảo tính nhất quán dữ liệu", "[d] Đảm bảo cho việc lưu trữ dữ liệu"], a: 1, expl: "Mục đích tối hậu của chuẩn hóa (Normal forms) là triệt tiêu (hoặc giảm thiểu tối đa) các dị thường do lưu trữ dư thừa gây ra." },
+            { q: "30. Nếu A -> B và A -> C thì suy ra?", o: ["[a] A -> BC", "[b] A -> AB", "[c] AB -> BC", "[d] AA -> C"], a: 0, expl: "Theo hệ tiên đề Armstrong, đây là luật Hợp (Union Rule): Nếu X->Y và X->Z thì X->YZ." },
+            { q: "31. Phụ thuộc nào sau đây là phụ thuộc đầy đủ?", o: ["[a] (Số thứ tự, mã lớp) -> Họ tên sinh viên", "[b] (Mã báo, mã khách hàng) -> Giá báo", "[c] (Số chứng minh thư, mã nhân viên) -> Quá trình công tác", "[d] (Số hoá đơn, mã khách hàng) -> Họ tên khách hang"], a: 0, expl: "Phụ thuộc đầy đủ là khi vế phải phụ thuộc vào TOÀN BỘ vế trái, không phụ thuộc vào một phần tử con nào của vế trái. Để định danh sinh viên cần cả STT và Mã Lớp." },
+            { q: "32. Khẳng định nào là phụ thuộc hàm?", o: ["[a] Họ và tên -> Số chứng minh thư", "[b] Họ và tên -> Địa chỉ", "[c] Họ và tên -> Số điện thoại nhà riêng", "[d] Số chứng minh thư -> Họ và tên"], a: 3, expl: "Một số CMT (duy nhất) sẽ xác định chính xác một Họ tên cụ thể. Ngược lại, một Họ tên có thể trỏ tới nhiều người có cùng tên (không phải phụ thuộc hàm)." },
+            { q: "33. Hệ tiên đề Armstrong cho các phụ thuộc hàm gồm các quy tắc:", o: ["[a] Phản xạ, hợp và tách.", "[b] Phản xạ, bắc cầu, hợp và tách.", "[c] Phản xạ, gia tăng, hợp và tách.", "[d] Phản xạ, gia tăng, bắc cầu."], a: 3, expl: "Hệ tiên đề Armstrong gốc (Core) gồm 3 luật: Phản xạ (Reflexivity), Gia tăng (Augmentation) và Bắc cầu (Transitivity)." },
+            { q: "34. Quy tắc gia tăng trong hệ tiên đề Armstrong:", o: ["[a] Nếu A -> B => B -> A", "[b] Nếu A -> B => A -> BC", "[c] Nếu A -> B => BC -> A", "[d] Nếu A -> B => AC -> BC"], a: 3, expl: "Luật Gia tăng (Augmentation): Nếu X -> Y thì XZ -> YZ (ở đây Z là C)." },
+            { q: "35. Quy tắc bắc cầu trong hệ tiên đề Armstrong:", o: ["[a] Nếu A -> B và B -> C => A -> C", "[b] Nếu A -> B và B -> C => AC -> B", "[c] Nếu A -> B và B -> C => AB -> C", "[d] Nếu A -> B và B -> C => AC -> BC"], a: 0, expl: "Luật Bắc cầu (Transitivity): Nếu X -> Y và Y -> Z thì suy ra X -> Z." },
+            { q: "36. Nếu A -> B và A -> C thì suy ra:", o: ["[a] AA -> C", "[b] A -> AB", "[c] A -> BC", "[d] AB -> BC"], a: 2, expl: "Luật Hợp (Union): A -> B và A -> C suy ra A -> BC." },
+            { q: "37. Nếu A -> BC suy ra:", o: ["[a] AC -> B và A -> CC", "[b] A -> C", "[c] A -> B và A -> C", "[d] A -> B"], a: 2, expl: "Luật Tách (Decomposition): Nếu X -> YZ thì suy ra X -> Y và X -> Z." },
+            { q: "38. Chọn một khẳng định nào sau đây là đúng nhất:", o: ["[a] Số điện thoại -> Mã vùng là phụ thuộc phản xạ.", "[b] Số điện thoại -> Họ tên thuê bao là phụ thuộc phản xạ.", "[c] (Số thứ tự, Mã lớp) -> Mã lớp là phụ thuộc phản xạ.", "[d] Số chứng minh thư -> Họ tên là phụ thuộc phản xạ."], a: 2, expl: "Phụ thuộc phản xạ (Trivial dependency) là khi vế phải là tập con của vế trái. Mã lớp nằm trong (STT, Mã lớp)." },
+            { q: "39. Phụ thuộc nào sau đây là phụ thuộc đầy đủ:", o: ["[a] (Mã nhân viên, tên nhân viên) xác định đơn vị công tác.", "[b] (Số thứ tự, đơn vị) xác định số thứ tự trong bảng lương.", "[c] Mã nhân viên xác định quá trình công tác nhân viên đó", "[d] Số thứ tự xác định tiền lương của một nhân viên"], a: 1, expl: "Để xác định STT trong bảng lương cần cả đơn vị và STT nội bộ của đơn vị đó." },
+            { q: "40. Chọn một khẳng định đúng nhất khi nói về bao đóng các thuộc tính:", o: ["[a] Hợp tất cả vế phải của các phụ thuộc hàm", "[b] Bao đóng của X ứng với tập F là hợp của vế trái của các phụ thuộc hàm", "[c] Bao đóng của X ứng với tập F là tập các thuộc tính phụ thuộc hàm vào X", "[d] Thông tin về đối tượng"], a: 2, expl: "Bao đóng của tập thuộc tính X (ký hiệu X+) là toàn bộ các thuộc tính có thể được suy diễn logic từ X." },
+            { q: "41. Chọn một khẳng định đúng nhất khi nói về tập tương đương:", o: ["[a] Tập G là tập con của F.", "[b] Các phụ thuộc của G là các phụ thuộc của F", "[c] Các phụ thuộc của F suy dẫn logic từ G và ngược lại", "[d] Các phụ thuộc của F cũng là các phụ thuộc của G và ngược lại."], a: 2, expl: "Hai tập phụ thuộc hàm F và G tương đương nhau khi F+ = G+ (Mọi PTH của F được suy diễn từ G và ngược lại)." },
+            { q: "42. Chọn một khẳng định đúng nhất khi nói về thuộc tính dư thừa:", o: ["[a] A1A2 -> B, A1 dư thừa khi A2 -> B", "[b] A1A2 -> B, A1 dư thừa khi A1A2 -> B phụ thuộc đầy đủ", "[c] A1A2 -> B, A1 dư thừa khi A2 -> B phụ thuộc đầy đủ", "[d] A1A2 -> B, A1 dư thừa khi A2 không xác định B"], a: 0, expl: "A1 bị coi là dư thừa trong vế trái nếu chỉ cần một mình A2 cũng đã đủ để xác định B." },
+            { q: "43. Nói rằng A -> B được suy dẫn từ F, nếu:", o: ["[a] Hai bộ bất kỳ trùng nhau trên A thì khác nhau trên B.", "[b] Hai bộ bất kỳ thoả trên A thì thoả trên B (trùng trên A thì trùng trên B).", "[c] Hai bộ bất kỳ khác nhau trên A thì cũng khác nhau trên B.", "[d] Áp dụng liên tiếp các hệ tiên đề Armstrong"], a: 1, expl: "Định nghĩa về suy diễn logic: Nếu hai bộ (dòng) giống nhau ở thuộc tính A thì bắt buộc chúng phải giống nhau ở thuộc tính B." },
+            { q: "44. Bao đóng tập các phụ thuộc hàm gồm các phụ thuộc:", o: ["[a] Bắc cầu được suy dẫn logic", "[b] Được suy dẫn bằng định nghĩa.", "[c] Được suy dẫn bằng cách áp dụng liên tiếp các hệ tiên đề Armstrong.", "[d] Đầy đủ được suy dẫn logic"], a: 2, expl: "Bao đóng F+ là tập tất cả các phụ thuộc hàm có thể tạo ra bằng việc áp dụng các tiên đề Armstrong." },
+            { q: "45. Nếu 2 bộ bất kỳ trùng nhau trên các thành phần của khóa thì:", o: ["[a] Cũng trùng nhau trên các thành phần của tất cả các bộ.", "[b] Cũng trùng nhau trên các thành phần không khóa.", "[c] Khác nhau trên các thành phần tất cả các bộ.", "[d] Khác nhau trên các thành phần không khóa."], a: 0, expl: "Khóa xác định duy nhất một bộ. Nếu trùng khóa, thì thực chất hai bộ đó là một, nên mọi thành phần khác đều phải trùng nhau." },
+            { q: "46. Khoá của lược đồ quan hệ là:", o: ["[a] Giá trị của mỗi thuộc tính có thể xác định duy nhất giá trị các thuộc tính khác.", "[b] Khoá gồm nhiều thuộc tính có khả năng biểu diễn các thuộc khác", "[c] Giá trị của thuộc tính xác định duy nhất giá trị các thuộc tính khác kể cả null.", "[d] Khoá là thuộc tính hay tập thuộc tính có khả năng biểu diễn duy nhất các thuộc tính còn lại."], a: 3, expl: "Khóa là một tập tối thiểu các thuộc tính mà bao đóng của nó chứa tất cả các thuộc tính của quan hệ." },
+            { q: "47. Khẳng định nào sau đây là đúng nhất:", o: ["[a] X là khóa nếu: X+ = U và (X-A)+ != U", "[b] Các thuộc tính không khoá phụ thuộc đầy đủ vào khóa.", "[c] Mỗi một giá trị của khoá xác định các giá trị của các thuộc tính không khoá.", "[d] Giá trị các khoá có thể trùng nhau."], a: 0, expl: "Điều kiện của một Khóa K: K+ = U (Đủ để xác định toàn bộ) và không có tập con thực sự nào của K có tính chất đó (tính tối thiểu)." },
+            { q: "48. Cho F={AB->C, D->EG, C->A, BE->C, BC->D, CG->BD, ACD->B}:", o: ["[a] EB, CE, BC không là khóa", "[b] EC, CE, BC khóa của lược đồ quan hệ", "[c] AB, CG, CD không là khóa", "[d] AB, CG, CD khóa của lược đồ quan hệ"], a: 1, expl: "Tính bao đóng của EC, CE, BC đều cho ra tập toàn bộ thuộc tính, và không thể bỏ bớt thuộc tính nào, nên chúng là các khóa." },
+            { q: "49. Cho Ω = {A, B, C, D, E, G}, F={B->C, C->B, A->GD}, khoá quan hệ là:", o: ["[a] ACE", "[b] ABC", "[c] AC", "[d] AB"], a: 0, expl: "A và E không nằm vế phải của bất kỳ PTH nào nên chắc chắn nằm trong khóa. Lấy (AE)+ chưa ra hết. Bổ sung C -> (ACE)+ = toàn bộ. Vậy khóa là ACE (hoặc ABE)." },
+            { q: "50. Xét quan hệ Ω={A,B,C,D,E,G,H} và F={C->AB, D->E, B->G}:", o: ["[a] Khoá quan hệ là {B, C, A}.", "[b] Quan hệ có dạng chuẩn 3NF", "[c] Khoá quan hệ là {H, C, D}.", "[d] Tất cả đều sai"], a: 2, expl: "H, C, D không nằm ở vế phải của F -> Bắt buộc nằm trong mọi khóa. Tính (HCD)+ = HCDEABG = Ω. Do đó {H, C, D} là khóa duy nhất." },
+            { q: "51. Khẳng định đúng nhất về chuẩn hóa:", o: ["[a] Chuẩn hoá dữ liệu là quá trình thực hiện các phép lưu trữ", "[b] Dữ liệu lưu trữ trong CSDL phản ảnh tính toàn vẹn dữ liệu.", "[c] Chuẩn hoá dữ liệu là quá trình tách quan hệ không làm tổn thất thông tin.", "[d] Quan hệ gốc được chứa trong quan hệ kết nối tự nhiên của các quan hệ chiếu."], a: 2, expl: "Nguyên tắc cốt lõi của chuẩn hóa là tách bảng to thành các bảng nhỏ để chống dị thường, nhưng tuyệt đối không được làm mất mát thông tin." },
+            { q: "53. Khẳng định đúng khi tách quan hệ:", o: ["[a] Đảm bảo tính toàn vẹn dữ liệu", "[b] Đảm bảo tính độc lập dữ liệu.", "[c] Làm tổn thất thông tin", "[d] Không làm tổn thất thông tin"], a: 3, expl: "Phép tách (Decomposition) hợp lệ phải thỏa mãn tính chất Join không tổn thất (Lossless Join)." },
+            { q: "54. Tách - kết nối không tổn thất thông tin là:", o: ["[a] Quan hệ R được khôi phục từ phép kết nối tự nhiên các quan hệ chiếu", "[b] Thông tin R nhận được từ kết nối tự nhiên các quan hệ chiếu ứng phép tách j.", "[c] Thông tin của R có thể nhận được từ các quan hệ khác", "[d] Quan hệ R được khôi phục từ phép kết nối các quan hệ chiếu"], a: 0, expl: "Tách không tổn thất nghĩa là khi dùng phép Natural Join (Kết nối tự nhiên) các bảng con, ta khôi phục lại được chính xác bảng gốc ban đầu không thừa không thiếu dòng nào." },
+            { q: "55. Khẳng định nào sau đây là đúng nhất:", o: ["[a] Khi thực hiện các phép lưu trữ trên quan hệ chưa chuẩn hoá thường xuất hiện dị thường thông tin.", "[b] Dữ liệu trong các quan hệ không đảm bảo tính toàn vẹn", "[c] Trong dữ liệu lưu trữ luôn luôn có sự dư thừa, không nhất quán dữ liệu", "[d] Dị thường thông tin thường xuất hiện khi thực hiện truy vấn dữ liệu"], a: 0, expl: "Dị thường xảy ra khi thao tác (thêm, sửa, xóa) trên các bảng có cấu trúc kém (chưa đạt các dạng chuẩn cao)." },
+            { q: "56. Khẳng định đúng về 2NF:", o: ["[a] Trong quan hệ 2NF, cấm tất cả các phụ thuộc không đầy đủ vào khoá.", "[b] Trong quan hệ 2NF, cấm tất cả các phụ thuộc đầy đủ vào khoá.", "[c] Trong quan hệ 2NF, các thuộc tính khoá phụ thuộc vào các tập con của khoá.", "[d] Trong quan hệ 2NF, các thuộc tính không khoá phụ thuộc vào khoá."], a: 0, expl: "Định nghĩa 2NF: Quan hệ đạt 1NF và mọi thuộc tính không khóa phải phụ thuộc ĐẦY ĐỦ vào khóa chính (không được phép phụ thuộc bộ phận vào một phần của khóa ghép)." },
+            { q: "57. Khẳng định đúng về 3NF:", o: ["[a] Trong quan hệ 3NF, các thuộc tính không khoá bằng rỗng.", "[b] Trong quan hệ 3NF, cấm các thuộc tính không khoá phụ thuộc vào thuộc tính có bao đóng khác Ω.", "[c] Trong quan hệ 3NF, cấm thuộc tính không khoá phụ thuộc vào các thuộc tính có bao đóng bằng Ω.", "[d] Trong quan hệ 3NF, các thuộc tính không khoá phụ thuộc hàm vào thuộc tính có bao đóng khác Ω."], a: 1, expl: "Định nghĩa 3NF: Đạt 2NF và loại bỏ các phụ thuộc bắc cầu (thuộc tính không khóa phụ thuộc vào một thuộc tính không khóa khác)." },
+            { q: "58. Chuyển từ 1NF về 3NF bằng cách:", o: ["[a] Loại bỏ các phụ thuộc bắc cầu vào khoá.", "[b] Loại bỏ các phụ thuộc không đầy đủ vào khoá", "[c] Loại bỏ các phụ thuộc không đầy đủ và bắc cầu vào khoá.", "[d] Loại bỏ các phụ thuộc đầy đủ và bắc cầu vào khoá."], a: 2, expl: "Từ 1NF -> 2NF: Loại bỏ phụ thuộc bộ phận (không đầy đủ). Từ 2NF -> 3NF: Loại bỏ phụ thuộc bắc cầu. Gom chung lại là đáp án C." },
+            { q: "59. Vì sao Elasticsearch không đảm bảo tính toàn vẹn dữ liệu?", o: ["[A] Không có database transaction", "[B] Lưu trữ phân tán gây mất mát dữ liệu", "[C] Không phải là cơ sở dữ liệu quan hệ", "[D] Là search và analytic engine"], a: 0, expl: "Elasticsearch là hệ thống NoSQL phục vụ tìm kiếm, nó không hỗ trợ ACID transaction cứng ngắc như RDBMS nên không đảm bảo toàn vẹn dữ liệu 100% trong các thao tác phức tạp." },
+            { q: "60. Elasticsearch tìm kiếm theo:", o: ["[A] Forward index", "[B] Inverted index", "[C] Document", "[D] Shards"], a: 1, expl: "Sức mạnh tìm kiếm siêu tốc của Elasticsearch đến từ cấu trúc Inverted Index (Chỉ mục đảo), ánh xạ từ từng từ ngữ (term) ngược lại văn bản chứa nó." },
+            { q: "61. Tìm kiếm full text trong Elasticsearch dùng gì:", o: ["[A] Term", "[B] Match", "[C] Like", "[D] Query"], a: 1, expl: "Query 'match' là truy vấn chuẩn mực nhất trong Elasticsearch để thực hiện Full-text search (tìm kiếm toàn văn bản có phân tích từ vựng)." },
+            { q: "62. Elasticsearch phát triển bằng ngôn ngữ nào", o: ["[A] Python", "[B] C++", "[C] Java", "[D] PHP"], a: 2, expl: "Elasticsearch được xây dựng trên lõi Apache Lucene, hoàn toàn bằng ngôn ngữ Java." },
+            { q: "63. Số các quy tắc chuyển từ mô hình thực thể sang mô hình quan hệ", o: ["[A] 3", "[B] 4", "[C] 6", "[D] 8"], a: 0, expl: "Các giáo trình chuẩn thường quy về 3 hoặc các bộ quy tắc cốt lõi: Ánh xạ thực thể mạnh, Ánh xạ thực thể yếu, và Ánh xạ các kiểu liên kết (1:1, 1:N, M:N)." },
+            { q: "64. RDD trong Apache Spark là", o: ["[A] RDD là một mô hình lập trình", "[B] RDD trong Apache Spark là tập hợp của các đối tượng bất biến", "[C] RDD là một dạng cơ sở dữ liệu", "[D] Tất cả đáp án trên đều sai"], a: 1, expl: "RDD (Resilient Distributed Dataset) là cấu trúc dữ liệu cốt lõi của Spark: một tập hợp phân tán các đối tượng chỉ đọc (bất biến - immutable)." },
+            { q: "65. Câu nào dưới đây không phải của mô hình ERD?", o: ["[A] Kiểu thực thể.", "[B] Thuộc tính.", "[C] Kiểu liên kết.", "[D] Không có đáp án đúng"], a: 3, expl: "Mô hình ERD (Entity-Relationship Diagram) bao gồm 3 thành phần chính: Thực thể (Entity), Thuộc tính (Attribute) và Liên kết (Relationship). Nên A, B, C đều thuộc ERD." }
+        ];
+
+        // ================= DANH SÁCH ID ẢNH TỪ GOOGLE DRIVE =================
+        // HÃY ĐIỀN ID ẢNH BẠN LẤY ĐƯỢC TỪ GOOGLE DRIVE VÀO CÁC CHUỖI BÊN DƯỚI:
+       // ================= DANH SÁCH ID ẢNH TỪ GOOGLE DRIVE =================
+        const driveImages = {
+            "lab03": "1ONSOEh-MtCK65M7_5gMKntJDogG57WF2",
+            "library": "13m97xxRGofRW7Nlxn5YWVr-dy_QGQ5RP",
+            "flight": "1T4-c0NQOSrsV5DyoZNnohLABPynisgg2",
+            "zoo": "1yd5FUKlpQa8iQmlTncopoOnbblq6kRi7",
+            "car": "1elbjdfe28GWiV4Tcle9cL8Hjf8zlqhHx"
+        };
+
+        // ================= ĐIỀU KHIỂN GIAO DIỆN =================
+        let currentDB = "lab03";
+        let pracIdx = 0, quizIdx = 0, expectedData = [];
+
+        function renderQNav(containerId, total, current, clickHandler) {
+            const container = document.getElementById(containerId);
+            let html = '';
+            for(let i=0; i<total; i++) {
+                html += `<button class="q-nav-btn ${i === current ? 'active' : ''}" onclick="${clickHandler}(${i})">${i+1}</button>`;
+            }
+            container.innerHTML = html;
+        }
+
+        function jumpPrac(index) { pracIdx = index; loadPrac(); }
+        function jumpQuiz(index) { quizIdx = index; loadQuiz(); }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            const rightPanel = document.getElementById('erd-panel');
+            const topBar = document.getElementById('top-bar');
+            
+            if(tabId === 'quiz') {
+                rightPanel.classList.add('hidden');
+                document.getElementById('btn-quiz').classList.add('active');
+                document.getElementById('quiz-tab').classList.add('active');
+                topBar.style.display = 'none';
+                if(quizIdx === 0) loadQuiz();
+            } else {
+                rightPanel.classList.remove('hidden');
+                document.getElementById('btn-practice').classList.add('active');
+                document.getElementById('practice-tab').classList.add('active');
+                topBar.style.display = 'flex';
+            }
+        }
+
+        function changeDatabase() {
+            currentDB = document.getElementById('db-selector').value;
+            pracIdx = 0;
+            
+            // Xử lý load ảnh động từ Google Drive sử dụng Proxy
+            const erdImg = document.getElementById('erd-img');
+            const fileId = driveImages[currentDB];
+            if (fileId) {
+                erdImg.src = `https://lh3.googleusercontent.com/d/${fileId}`;
+            } else {
+                erdImg.src = "";
+            }
+            
+            erdImg.onerror = function() {
+                this.src = "";
+                this.alt = "Lỗi tải ảnh! Hãy kiểm tra lại ID ảnh trên Drive hoặc quyền chia sẻ công khai.";
+            };
+
+            alasql("DROP DATABASE IF EXISTS testdb; CREATE DATABASE testdb; USE testdb;");
+            alasql(dbs[currentDB].sql);
+            
+            loadPrac();
+        }
+
+        // --- GÕ CODE SQL ---
+        function loadPrac() {
+            const data = dbs[currentDB].practice[pracIdx];
+            document.getElementById('prac-question').innerText = data.q;
+            renderQNav('prac-q-nav', dbs[currentDB].practice.length, pracIdx, 'jumpPrac');
+            document.getElementById('sql-input').value = "";
+            document.getElementById('user-result').innerHTML = "";
+            document.getElementById('status-msg').style.display = "none";
+            try { expectedData = alasql(data.expectedSQL); renderTable(expectedData, 'expected-result'); } catch (e) {}
+        }
+
+        function runQuery() {
+            const userSQL = document.getElementById('sql-input').value.trim();
+            const sDiv = document.getElementById('status-msg');
+            if(!userSQL) { sDiv.innerText = "Chưa nhập SQL!"; sDiv.className = "status error"; return; }
+            try {
+                const userData = alasql(userSQL);
+                renderTable(userData, 'user-result');
+                if (JSON.stringify(userData) === JSON.stringify(expectedData)) { sDiv.innerText = "🎉 CHÍNH XÁC!"; sDiv.className = "status correct"; } 
+                else { sDiv.innerText = "❌ Chưa khớp đáp án. Xem lại Logic!"; sDiv.className = "status error"; }
+            } catch (e) { document.getElementById('user-result').innerHTML = ""; sDiv.innerText = "⚠️ LỖI: " + e.message; sDiv.className = "status error"; }
+        }
+
+        function nextPrac() {
+            if(pracIdx < dbs[currentDB].practice.length - 1) { pracIdx++; loadPrac(); } else { alert("Bạn đã hoàn thành xong bộ câu hỏi này!"); pracIdx = 0; loadPrac(); }
+        }
+
+        // --- TRẮC NGHIỆM TỔNG HỢP ---
+        function loadQuiz() {
+            const data = fullQuiz[quizIdx];
+            document.getElementById('quiz-question').innerText = `Câu ${quizIdx + 1}: ${data.q}`;
+            renderQNav('quiz-q-nav', fullQuiz.length, quizIdx, 'jumpQuiz');
+            document.getElementById('quiz-rationale').style.display = 'none';
+            const optContainer = document.getElementById('quiz-options');
+            optContainer.innerHTML = '';
+            data.o.forEach((optText, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'opt-btn'; btn.innerText = String.fromCharCode(65 + index) + ". " + optText;
+                const isCorrect = (index === data.a);
+                btn.onclick = () => {
+                    Array.from(optContainer.children).forEach((b, i) => {
+                        b.disabled = true;
+                        if(i === data.a) b.classList.add('correct');
+                    });
+                    if(!isCorrect) btn.classList.add('wrong');
+                    document.getElementById('quiz-rationale').innerHTML = `<b>Giải thích:</b> ${data.expl}`;
+                    document.getElementById('quiz-rationale').style.display = 'block';
+                };
+                optContainer.appendChild(btn);
+            });
+        }
+        function nextQuiz() {
+            if(quizIdx < fullQuiz.length - 1) { quizIdx++; loadQuiz(); } else { alert("Tuyệt vời! Bạn đã hoàn thành toàn bộ câu hỏi trắc nghiệm!"); quizIdx = 0; loadQuiz(); }
+        }
+
+        function renderTable(data, cid) {
+            const c = document.getElementById(cid);
+            if(!data || !data.length) { c.innerHTML = "<p>0 dòng.</p>"; return; }
+            let cols = Object.keys(data[0]), html = "<table><tr>" + cols.map(col => `<th>${col}</th>`).join('') + "</tr>";
+            data.forEach(row => { html += "<tr>" + cols.map(col => `<td>${row[col] !== undefined ? row[col] : 'NULL'}</td>`).join('') + "</tr>"; });
+            c.innerHTML = html + "</table>";
+        }
+
+        window.onload = changeDatabase;
+    </script>
+</body>
+</html>
