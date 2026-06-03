@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ôn thi SQL - Nền tảng học tập Toàn diện</title>
+    <title>Ôn thi SQL </title>
     
     <script src="https://cdn.jsdelivr.net/npm/alasql@4"></script>
     
@@ -116,7 +116,7 @@
 </head>
 <body>
 
-    <div class="top-bar" id="top-bar">
+    <div class="top-bar" id="top-bar" style="flex-wrap: wrap;">
         <label for="db-selector" style="font-size: 16px;">📚 <b>Hệ thống Quản lý:</b></label>
         <select id="db-selector" onchange="changeDatabase()">
             <option value="lab03">01. Quản lý Dự án</option>
@@ -126,6 +126,16 @@
             <option value="car">05. Quản lý Bán xe (Car)</option>
         </select>
         <span style="font-size:13px; color:#64748b; margin-left: auto;">💡 Mẹo: Tự động gợi ý code khi gõ. Bấm <b>Ctrl+Space</b> hoặc <b>Alt+Space</b> để mở thủ công</span>
+
+        <details style="width: 100%; margin-top: 5px; background: #fff; padding: 5px 10px; border-radius: 4px; border: 1px solid var(--border);">
+            <summary style="cursor: pointer; font-weight: bold; color: var(--primary); outline: none;">📖 Bấm vào đây để xem Từ Điển Thuật Ngữ (Dịch nghĩa các Bảng)</summary>
+            <div style="font-size: 13px; color: #475569; margin-top: 8px; line-height: 1.6; max-height: 150px; overflow-y: auto;">
+                <b>1. Thư viện:</b> CATEGORIES (Thể loại), AUTHORS (Tác giả), BOOKS (Sách: PublishYear-Năm XB, StockQuantity-Tồn kho), MEMBERS (Độc giả), LOANS (Phiếu mượn: DueDate-Hạn trả, ReturnDate-Ngày trả), FINES (Phạt: Amount-Tiền phạt).<br>
+                <b>2. Chuyến bay:</b> AIRLINES (Hãng bay), AIRPORTS (Sân bay), AIRCRAFTS (Máy bay: Capacity-Sức chứa), FLIGHTS (Chuyến bay: Origin-Đi, Destination-Đến), PASSENGERS (Hành khách), TICKETS (Vé: SeatNo-Số ghế, Class-Hạng vé).<br>
+                <b>3. Sở thú:</b> ZONES (Khu vực), ENCLOSURES (Chuồng/Trại: Climate-Khí hậu), DIETS (Chế độ ăn: DailyCost-Chi phí ngày), ANIMALS (Động vật: Species-Loài), KEEPERS (Nhân viên chăm sóc), ASSIGNMENTS (Phân công: Shift-Ca làm).<br>
+                <b>4. Xe ô tô:</b> BRANDS (Thương hiệu), MODELS (Dòng xe: BodyType-Kiểu dáng), CARS (Xe: Mileage-Số KM đã đi), CUSTOMERS (Khách hàng), EMPLOYEES (Nhân viên), TRANSACTIONS (Giao dịch: FinalPrice-Giá chốt bán, PaymentMethod-Cách thanh toán).
+            </div>
+        </details>
     </div>
 
     <div class="main-content">
