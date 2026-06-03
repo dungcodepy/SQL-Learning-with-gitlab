@@ -40,27 +40,34 @@
         
         .left-panel { flex: 1; display: flex; flex-direction: column; background: white; border-radius: 6px; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden; transition: all 0.3s ease;}
         
-        .tab-header { display: flex; background: #e2e8f0; border-bottom: 2px solid var(--primary); flex: 0 0 auto; }
-        .tab-btn { flex: 1; padding: 10px; font-size: 15px; font-weight: bold; border: none; background: transparent; cursor: pointer; color: #475569; transition: all 0.2s; }
+        .tab-header { display: flex; background: #e2e8f0; border-bottom: 2px solid var(--primary); flex: 0 0 auto; overflow-x: auto;}
+        .tab-btn { flex: 1; padding: 10px; font-size: 14px; font-weight: bold; border: none; background: transparent; cursor: pointer; color: #475569; transition: all 0.2s; white-space: nowrap;}
         .tab-btn:hover { background: #cbd5e1; }
         .tab-btn.active { background: var(--primary); color: white; }
         
-        .tab-content { display: none; flex: 1; flex-direction: column; padding: 15px; overflow-y: auto; }
-        .tab-content.active { display: flex; gap: 12px; }
+        /* Cấu hình chung cho khu vực chứa nội dung Tab */
+        .tab-content { display: none; flex: 1; padding: 15px; overflow-y: auto; }
+        
+        /* Các tab Lý thuyết, Quiz, Test dùng display block để cuộn tự nhiên */
+        #theory-tab.active, #quiz-tab.active, #test-tab.active { display: block; }
+        
+        /* Riêng tab Gõ code cần display flex để chia khu vực trên/dưới */
+        #practice-tab.active { display: flex; flex-direction: column; gap: 12px; }
 
         .question-box { background: #eff6ff; border-left: 4px solid var(--primary); padding: 12px; font-weight: 500; font-size: 15px; line-height: 1.4; border-radius: 0 4px 4px 0;}
         
-        details.hint-box { margin-bottom: 8px; }
+        details.hint-box { margin-bottom: 5px; }
         details.hint-box summary { cursor: pointer; font-size: 13px; font-weight: bold; color: #d97706; outline: none; display: inline-flex; align-items: center; padding: 6px 10px; border-radius: 4px; background: #fef3c7; user-select: none; transition: 0.2s;}
         details.hint-box summary:hover { background: #fde68a; }
         details.hint-box p { margin: 8px 0 0 10px; font-size: 13px; color: #475569; font-style: italic; border-left: 3px solid #fcd34d; padding-left: 8px; line-height: 1.5;}
 
-        .controls { display: flex; justify-content: space-between; align-items: center; }
+        .controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         
         .q-nav { display: flex; gap: 5px; flex-wrap: wrap; }
         .q-nav-btn { width: 32px; height: 32px; border-radius: 4px; border: 1px solid #cbd5e1; background: white; cursor: pointer; font-weight: bold; color: #475569; transition: 0.2s; }
         .q-nav-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
-        .q-nav-btn:hover:not(.active) { background: #e2e8f0; }
+        .q-nav-btn.answered { background: #10b981; color: white; border-color: #10b981; }
+        .q-nav-btn:hover:not(.active):not(.answered) { background: #e2e8f0; }
 
         button.action-btn { padding: 8px 14px; font-size: 13px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; color: white; transition: 0.2s; background: var(--primary); }
         button.action-btn:hover { background: var(--primary-hover); }
@@ -78,7 +85,7 @@
         .status.correct { background: #dcfce7; color: var(--success); display: block; border: 1px solid #bbf7d0;}
         .status.error { background: #fee2e2; color: var(--danger); display: block; border: 1px solid #fecaca;}
 
-        .quiz-options { display: flex; flex-direction: column; gap: 8px; }
+        .quiz-options { display: flex; flex-direction: column; gap: 8px; margin-top: 10px;}
         .opt-btn { padding: 10px 12px; font-size: 14px; text-align: left; border: 2px solid #cbd5e1; border-radius: 6px; background: white; cursor: pointer; transition: 0.2s; }
         .opt-btn:hover:not(:disabled) { border-color: var(--primary); background: #f8fafc; }
         .opt-btn.correct { border-color: var(--success); background: #f0fdf4; color: #166534; }
@@ -93,6 +100,18 @@
 
         #erd-container { flex: 1; border: 2px dashed #cbd5e1; background: #fdfdfd; border-radius: 6px; display: flex; justify-content: center; align-items: center; padding: 10px; overflow: hidden; }
         #erd-img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 4px; }
+
+        /* CSS cho trang Lý thuyết */
+        .theory-block { margin-bottom: 20px; background: white; padding: 15px 20px; border-radius: 6px; border: 1px solid var(--border); box-shadow: 0 1px 2px rgba(0,0,0,0.05);}
+        .theory-block h3 { color: var(--primary); margin-top: 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; font-size: 18px;}
+        .schema-box { background: #1e293b; color: #f8fafc; padding: 15px; border-radius: 6px; font-family: 'Consolas', monospace; font-size: 14px; line-height: 1.6; overflow-x: auto; margin-bottom: 15px;}
+        .schema-box b { color: #facc15; } 
+        .code-example { background: #f8fafc; border-left: 4px solid var(--primary); padding: 12px; font-family: 'Consolas', monospace; font-weight: bold; color: #0f172a; margin: 10px 0;}
+        .theory-exercise { background: #fffbeb; border: 1px solid #fcd34d; padding: 12px; border-radius: 4px; margin-top: 15px;}
+        .theory-exercise details { margin-top: 8px; }
+        .theory-exercise details summary { color: #b45309; font-weight: bold; cursor: pointer; outline: none;}
+        .theory-exercise details summary:hover { text-decoration: underline; }
+        .theory-exercise details div { margin-top: 10px; padding: 10px; background: #dcfce7; color: #166534; font-family: monospace; border-left: 4px solid #16a34a; font-size: 14px;}
     </style>
 </head>
 <body>
@@ -106,14 +125,136 @@
             <option value="zoo">04. Quản lý Sở thú (Zoo)</option>
             <option value="car">05. Quản lý Bán xe (Car)</option>
         </select>
-        <span style="font-size:13px; color:#64748b; margin-left: auto;">💡 Mẹo: Tự động gợi ý code khi gõ. Bấm <b>Ctrl+Space</b> hoặc <b>Alt+Space</b> để mở thủ công</span>
+        <span style="font-size:13px; color:#64748b; margin-left: auto;">💡 <b> Để bấm nhanh chọn bảng chứa hàng cần nhập sau đó bấm dấu chấm</span>
     </div>
 
     <div class="main-content">
         <div class="left-panel">
             <div class="tab-header">
+                <button class="tab-btn" id="btn-theory" onclick="switchTab('theory')">📚 Lý Thuyết SQL</button>
                 <button class="tab-btn active" id="btn-practice" onclick="switchTab('practice')">💻 Thực hành Gõ Code</button>
-                <button class="tab-btn" id="btn-quiz" onclick="switchTab('quiz')">📝 Luyện Trắc Nghiệm Tổng Hợp</button>
+                <button class="tab-btn" id="btn-quiz" onclick="switchTab('quiz')">📝 Luyện Trắc Nghiệm</button>
+                <button class="tab-btn" id="btn-test" onclick="switchTab('test')">⏱️ Thi Thử (Lấy Điểm)</button>
+            </div>
+
+            <div id="theory-tab" class="tab-content" style="background: var(--bg); padding: 15px;">
+                <div class="theory-block" style="background: #fff; margin-bottom: 20px;">
+                    <h2 style="margin:0 0 10px 0; color: #0f172a;">📖 Cẩm Nang Lập Trình SQL Từ A-Z</h2>
+                    <p>Dưới đây là lược đồ cơ sở dữ liệu mẫu <b>QUẢN LÝ BÁN HÀNG</b> gồm 7 bảng siêu liên kết để chúng ta phân tích các ví dụ:</p>
+                    <div class="schema-box">
+                        <b>KHACHHANG</b> (🔑MaKH, TenKH, DiaChi, SDT)<br>
+                        <b>NHANVIEN</b> (🔑MaNV, TenNV, ChucVu, Luong, @MaPhong)<br>
+                        <b>PHONGBAN</b> (🔑MaPhong, TenPhong, TruongPhong)<br>
+                        <b>LOAISP</b> (🔑MaLoai, TenLoai)<br>
+                        <b>SANPHAM</b> (🔑MaSP, TenSP, @MaLoai, Gia, SoLuongTon)<br>
+                        <b>HOADON</b> (🔑MaHD, @MaKH, @MaNV, NgayLap, TongTien)<br>
+                        <b>CHITIET_HD</b> (🔑@MaHD, 🔑@MaSP, SoLuongBan, DonGia)
+                    </div>
+                </div>
+
+                <div class="theory-block">
+                    <h3>1. Truy vấn cơ bản: SELECT, FROM, WHERE, ORDER BY</h3>
+                    <p><b>- Mục đích:</b> Rút trích dữ liệu từ 1 bảng, lọc theo điều kiện và sắp xếp kết quả.</p>
+                    <div class="code-example">
+                        SELECT TenSP, Gia <br>
+                        FROM SANPHAM <br>
+                        WHERE Gia >= 500000 <br>
+                        ORDER BY Gia DESC;
+                    </div>
+                    <p><b>🔍 Phân tích:</b> Lấy tên và giá của sản phẩm (SELECT) từ bảng SANPHAM (FROM). Lọc chỉ lấy những sản phẩm có giá từ 500.000 trở lên (WHERE). Sau đó sắp xếp bảng kết quả theo Giá giảm dần (ORDER BY DESC).</p>
+                    <div class="theory-exercise">
+                        <b>📝 Bài tập rèn luyện:</b>
+                        <p>1. (Lý thuyết): Mệnh đề WHERE và ORDER BY cái nào được hệ thống xử lý trước?</p>
+                        <p>2. (Thực hành): Lấy ra danh sách tên nhân viên và lương, sắp xếp lương tăng dần, chỉ lấy những người lương > 10 triệu.</p>
+                        <details>
+                            <summary>Xem đáp án</summary>
+                            <div>
+                                <b>1.</b> Mệnh đề WHERE chạy trước để lọc dữ liệu thô. Sau khi lọc xong, ORDER BY mới chạy để sắp xếp kết quả cuối cùng.<br><br>
+                                <b>2. Code:</b><br>
+                                SELECT TenNV, Luong FROM NHANVIEN <br>
+                                WHERE Luong > 10000000 ORDER BY Luong ASC;
+                            </div>
+                        </details>
+                    </div>
+                </div>
+
+                <div class="theory-block">
+                    <h3>2. Nối bảng (Hiểu rõ cơ chế JOIN)</h3>
+                    <p><b>- Mục đích:</b> Dùng để gộp các cột từ 2 hay nhiều bảng lại với nhau thành 1 bảng kết quả dựa trên Khóa chính (PK) và Khóa ngoại (FK).</p>
+                    <div class="code-example">
+                        SELECT hd.MaHD, kh.TenKH, nv.TenNV <br>
+                        FROM HOADON hd<br>
+                        JOIN KHACHHANG kh ON hd.MaKH = kh.MaKH<br>
+                        JOIN NHANVIEN nv ON hd.MaNV = nv.MaNV;
+                    </div>
+                    <p><b>🔍 Phân tích:</b> Bảng HOADON chỉ có mã khách (MaKH) và mã nhân viên (MaNV). Để biết được Tên khách và Tên nhân viên cụ thể, ta dùng <b>JOIN</b> nối với bảng KHACHHANG và NHANVIEN thông qua các mã tương ứng.</p>
+                    <div class="theory-exercise">
+                        <b>📝 Bài tập rèn luyện:</b>
+                        <p>1. (Lý thuyết): Sự khác nhau giữa INNER JOIN và LEFT JOIN là gì?</p>
+                        <p>2. (Thực hành): Liệt kê tên sản phẩm (TenSP) và tên loại sản phẩm (TenLoai) tương ứng.</p>
+                        <details>
+                            <summary>Xem đáp án</summary>
+                            <div>
+                                <b>1.</b> INNER JOIN chỉ lấy các dòng khớp nhau ở cả 2 bảng. LEFT JOIN lấy toàn bộ dòng ở bảng bên TRÁI, nếu bảng bên PHẢI không có dữ liệu khớp thì điền NULL.<br><br>
+                                <b>2. Code:</b><br>
+                                SELECT sp.TenSP, l.TenLoai <br>
+                                FROM SANPHAM sp JOIN LOAISP l ON sp.MaLoai = l.MaLoai;
+                            </div>
+                        </details>
+                    </div>
+                </div>
+
+                <div class="theory-block">
+                    <h3>3. Gom nhóm dữ liệu: GROUP BY & HAVING</h3>
+                    <p><b>- Mục đích:</b> GROUP BY dùng để nhóm các dòng có dữ liệu giống nhau lại (thường đi kèm SUM, COUNT, MAX...). HAVING dùng để lọc các "nhóm" sau khi đã gom xong (không dùng WHERE để lọc nhóm).</p>
+                    <div class="code-example">
+                        SELECT MaNV, COUNT(MaHD) AS SoHoaDonLap <br>
+                        FROM HOADON <br>
+                        GROUP BY MaNV <br>
+                        HAVING COUNT(MaHD) >= 5;
+                    </div>
+                    <p><b>🔍 Phân tích:</b> Gom tất cả các hóa đơn do cùng một nhân viên lập lại thành 1 cục (GROUP BY MaNV), đếm xem mỗi cục đó có bao nhiêu hóa đơn (COUNT). Cuối cùng chỉ hiển thị những nhân viên lập từ 5 hóa đơn trở lên (HAVING).</p>
+                    <div class="theory-exercise">
+                        <b>📝 Bài tập rèn luyện:</b>
+                        <p>1. (Lý thuyết): Tại sao không được dùng alias (tên định danh như AS SoHoaDonLap) trong mệnh đề HAVING ở các hệ quản trị CSDL chuẩn?</p>
+                        <p>2. (Thực hành): Tìm mã khách hàng đã mua tổng số tiền (SUM(TongTien)) lớn hơn 20 triệu.</p>
+                        <details>
+                            <summary>Xem đáp án</summary>
+                            <div>
+                                <b>1.</b> Vì HAVING được xử lý trước lệnh SELECT. Lúc HAVING chạy, nó chưa biết "SoHoaDonLap" là cái gì.<br><br>
+                                <b>2. Code:</b><br>
+                                SELECT MaKH, SUM(TongTien) AS TongDaMua <br>
+                                FROM HOADON GROUP BY MaKH HAVING SUM(TongTien) > 20000000;
+                            </div>
+                        </details>
+                    </div>
+                </div>
+
+                <div class="theory-block">
+                    <h3>4. Toán tử IN, NOT IN và Truy vấn con (Subquery)</h3>
+                    <p><b>- Mục đích:</b> Truy vấn con là một câu SELECT nằm bên trong 1 câu SELECT khác. Thường dùng với IN/NOT IN để kiểm tra xem một giá trị có nằm trong tập hợp do truy vấn con trả về hay không.</p>
+                    <div class="code-example">
+                        SELECT TenKH FROM KHACHHANG <br>
+                        WHERE MaKH NOT IN ( <br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;SELECT MaKH FROM HOADON <br>
+                        );
+                    </div>
+                    <p><b>🔍 Phân tích:</b> Truy vấn con <code>(SELECT MaKH FROM HOADON)</code> trả về 1 danh sách các mã khách hàng ĐÃ TỪNG MUA HÀNG. Truy vấn chính dùng <b>NOT IN</b> để lọc ra những khách hàng có mã KHÔNG NẰM TRONG danh sách đó => Tìm ra khách hàng chưa từng mua hàng.</p>
+                    <div class="theory-exercise">
+                        <b>📝 Bài tập rèn luyện:</b>
+                        <p>1. (Lý thuyết): Nếu truy vấn con bên trong có chứa giá trị NULL, thì phép NOT IN sẽ bị ảnh hưởng thế nào?</p>
+                        <p>2. (Thực hành): Liệt kê tên các sản phẩm (TenSP) chưa từng được bán (không có trong CHITIET_HD).</p>
+                        <details>
+                            <summary>Xem đáp án</summary>
+                            <div>
+                                <b>1.</b> Cực kỳ nguy hiểm! Nếu truy vấn con trả về tập hợp có chứa NULL (VD: NOT IN (1, 2, NULL)), kết quả của toán tử NOT IN luôn luôn là rỗng (không trả về dòng nào). Nên dùng NOT EXISTS để an toàn hơn.<br><br>
+                                <b>2. Code:</b><br>
+                                SELECT TenSP FROM SANPHAM <br>
+                                WHERE MaSP NOT IN (SELECT MaSP FROM CHITIET_HD);
+                            </div>
+                        </details>
+                    </div>
+                </div>
             </div>
 
             <div id="practice-tab" class="tab-content active">
@@ -146,6 +287,20 @@
                 <div class="quiz-options" id="quiz-options"></div>
                 <div class="rationale-box" id="quiz-rationale"></div>
             </div>
+
+            <div id="test-tab" class="tab-content">
+                <div class="controls">
+                    <div class="q-nav" id="test-q-nav"></div> 
+                    <button class="action-btn next-btn" onclick="nextTest()">Câu tiếp theo ❯</button>
+                </div>
+                <div id="test-question" class="question-box"></div>
+                <div class="quiz-options" id="test-options"></div>
+                <div style="margin-top: 15px; text-align: center;">
+                    <button class="action-btn" style="background: #eab308; color: black; font-size: 16px; padding: 10px 20px;" onclick="submitTest()">Nộp bài & Chấm điểm</button>
+                </div>
+                <div id="test-result" class="rationale-box" style="font-size: 18px; text-align: center; font-weight: bold;"></div>
+            </div>
+
         </div>
 
         <div class="right-panel" id="erd-panel">
@@ -159,7 +314,6 @@
 
     <script>
         // ================= DỮ LIỆU SQL & THỰC HÀNH =================
-// ================= DỮ LIỆU SQL & THỰC HÀNH =================
         const dbs = {
             "lab03": {
                 sql: `
@@ -511,7 +665,7 @@
 
         // ================= DANH SÁCH ID ẢNH TỪ GOOGLE DRIVE =================
         const driveImages = {
-            "lab03": "1ONSOEh-MtCK65M7_5gMKntJDogG57WF2",
+            "lab03": "1m5d0GEUVLIoM80QVj-mDaumt_drQX2Je",
             "library": "13m97xxRGofRW7Nlxn5YWVr-dy_QGQ5RP",
             "flight": "1T4-c0NQOSrsV5DyoZNnohLABPynisgg2",
             "zoo": "1yd5FUKlpQa8iQmlTncopoOnbblq6kRi7",
@@ -520,8 +674,9 @@
 
         // ================= ĐIỀU KHIỂN GIAO DIỆN =================
         let currentDB = "lab03";
-        let pracIdx = 0, quizIdx = 0, expectedData = [];
-		let editor; // THÊM DÒNG NÀY
+        let pracIdx = 0, quizIdx = 0, testIdx = 0, expectedData = [];
+        let userAnswers = new Array(fullQuiz.length).fill(null);
+        let editor;
 
         function renderQNav(containerId, total, current, clickHandler) {
             const container = document.getElementById(containerId);
@@ -534,7 +689,7 @@
 
         function jumpPrac(index) { pracIdx = index; loadPrac(); }
         function jumpQuiz(index) { quizIdx = index; loadQuiz(); }
-
+        
         function switchTab(tabId) {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
@@ -548,11 +703,23 @@
                 document.getElementById('quiz-tab').classList.add('active');
                 topBar.style.display = 'none';
                 if(quizIdx === 0) loadQuiz();
+            } else if (tabId === 'test') {
+                rightPanel.classList.add('hidden');
+                document.getElementById('btn-test').classList.add('active');
+                document.getElementById('test-tab').classList.add('active');
+                topBar.style.display = 'none';
+                if(testIdx === 0) loadTest();
+            } else if (tabId === 'theory') {
+                rightPanel.classList.add('hidden');
+                document.getElementById('btn-theory').classList.add('active');
+                document.getElementById('theory-tab').classList.add('active');
+                topBar.style.display = 'none';
             } else {
                 rightPanel.classList.remove('hidden');
                 document.getElementById('btn-practice').classList.add('active');
                 document.getElementById('practice-tab').classList.add('active');
                 topBar.style.display = 'flex';
+                setTimeout(() => { if(editor) editor.refresh(); }, 10);
             }
         }
 
@@ -581,37 +748,25 @@
 			updateEditorHints();
         }
 
-        // --- GÕ CODE SQL ---
-        
-        // Hàm lưu trữ code tự động mỗi khi người dùng gõ
-        function saveCurrentCode() {
-            const currentCode = document.getElementById('sql-input').value;
-            localStorage.setItem(`sql_save_${currentDB}_${pracIdx}`, currentCode);
-        }
-
-       function loadPrac() {
+        function loadPrac() {
             const data = dbs[currentDB].practice[pracIdx];
             document.getElementById('prac-question').innerText = data.q;
             renderQNav('prac-q-nav', dbs[currentDB].practice.length, pracIdx, 'jumpPrac');
             
-            // --- ĐOẠN CODE BỊ THIẾU: HIỂN THỊ GỢI Ý ---
             const hintElem = document.getElementById('prac-hint');
             if(data.hint) {
                 hintElem.style.display = 'block';
-                hintElem.removeAttribute('open'); // Mặc định thu gọn khi sang câu mới
+                hintElem.removeAttribute('open');
                 document.getElementById('prac-hint-text').innerText = data.hint;
             } else {
                 hintElem.style.display = 'none';
             }
-            // ------------------------------------------
 
-            // Xóa sạch dữ liệu kết quả cũ khi sang câu mới
             document.getElementById('user-result').innerHTML = "";
             document.getElementById('expected-result').innerHTML = ""; 
             document.getElementById('status-msg').style.display = "none";
             expectedData = []; 
             
-            // Phục hồi dữ liệu từ localStorage (nếu có)
             const savedSQL = localStorage.getItem(`sql_save_${currentDB}_${pracIdx}`);
             if (editor) {
                 editor.setValue(savedSQL || "");
@@ -621,7 +776,6 @@
                 expectedData = alasql(data.expectedSQL); 
                 renderTable(expectedData, 'expected-result'); 
             } catch (e) {
-                // Nếu SQL đáp án bị lỗi, báo đỏ lên màn hình
                 document.getElementById('expected-result').innerHTML = `<p style="color: red; font-weight: bold;">⚠️ Lỗi cú pháp đáp án: ${e.message}</p>`;
             }
         }
@@ -630,7 +784,6 @@
             const userSQL = editor.getValue().trim().replace(/\u00A0/g, ' ');
             const sDiv = document.getElementById('status-msg');
             
-            // Đảm bảo code được lưu lại trước khi chạy
             localStorage.setItem(`sql_save_${currentDB}_${pracIdx}`, userSQL);
 
             if(!userSQL) { sDiv.innerText = "Chưa nhập SQL!"; sDiv.className = "status error"; return; }
@@ -646,7 +799,6 @@
             if(pracIdx < dbs[currentDB].practice.length - 1) { pracIdx++; loadPrac(); } else { alert("Bạn đã hoàn thành xong bộ câu hỏi này!"); pracIdx = 0; loadPrac(); }
         }
 
-        // --- TRẮC NGHIỆM TỔNG HỢP ---
         function loadQuiz() {
             const data = fullQuiz[quizIdx];
             document.getElementById('quiz-question').innerText = `Câu ${quizIdx + 1}: ${data.q}`;
@@ -656,7 +808,8 @@
             optContainer.innerHTML = '';
             data.o.forEach((optText, index) => {
                 const btn = document.createElement('button');
-                btn.className = 'opt-btn'; btn.innerText = String.fromCharCode(65 + index) + ". " + optText;
+                btn.className = 'opt-btn'; 
+                btn.innerText = String.fromCharCode(65 + index) + ". " + optText;
                 const isCorrect = (index === data.a);
                 btn.onclick = () => {
                     Array.from(optContainer.children).forEach((b, i) => {
@@ -673,11 +826,71 @@
         function nextQuiz() {
             if(quizIdx < fullQuiz.length - 1) { quizIdx++; loadQuiz(); } else { alert("Tuyệt vời! Bạn đã hoàn thành toàn bộ câu hỏi trắc nghiệm!"); quizIdx = 0; loadQuiz(); }
         }
-		function updateEditorHints() {
+
+        // --- CHỨC NĂNG THI THỬ ---
+        function jumpTest(index) { testIdx = index; loadTest(); }
+
+        function loadTest() {
+            const data = fullQuiz[testIdx];
+            document.getElementById('test-question').innerText = `Câu ${testIdx + 1}: ${data.q}`;
+            
+            const navContainer = document.getElementById('test-q-nav');
+            let navHtml = '';
+            for(let i=0; i<fullQuiz.length; i++) {
+                let extraClass = (i === testIdx) ? 'active' : (userAnswers[i] !== null ? 'answered' : '');
+                navHtml += `<button class="q-nav-btn ${extraClass}" onclick="jumpTest(${i})">${i+1}</button>`;
+            }
+            navContainer.innerHTML = navHtml;
+
+            document.getElementById('test-result').style.display = 'none';
+
+            const optContainer = document.getElementById('test-options');
+            optContainer.innerHTML = '';
+            data.o.forEach((optText, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'opt-btn'; 
+                btn.innerText = String.fromCharCode(65 + index) + ". " + optText;
+                
+                if (userAnswers[testIdx] === index) {
+                    btn.style.borderColor = "var(--primary)";
+                    btn.style.background = "#eff6ff";
+                }
+
+                btn.onclick = () => {
+                    userAnswers[testIdx] = index;
+                    loadTest();
+                };
+                optContainer.appendChild(btn);
+            });
+        }
+
+        function nextTest() {
+            if(testIdx < fullQuiz.length - 1) { testIdx++; loadTest(); } 
+        }
+
+        function submitTest() {
+            let score = 0;
+            let unanswered = 0;
+            
+            for(let i=0; i<fullQuiz.length; i++) {
+                if (userAnswers[i] === null) unanswered++;
+                else if (userAnswers[i] === fullQuiz[i].a) score++;
+            }
+            
+            if (unanswered > 0) {
+                if(!confirm(`Bạn còn ${unanswered} câu chưa làm. Bạn có chắc chắn muốn nộp bài?`)) return;
+            }
+            
+            const resultBox = document.getElementById('test-result');
+            resultBox.innerHTML = `🏆 BẠN ĐÃ HOÀN THÀNH BÀI THI!<br>Số câu đúng: <span style="color:var(--success); font-size: 24px;">${score}/${fullQuiz.length}</span>`;
+            resultBox.style.display = 'block';
+            resultBox.style.background = '#dcfce7';
+            resultBox.style.borderLeftColor = 'var(--success)';
+        }
+
+        function updateEditorHints() {
             if (!editor) return;
             let dbTables = {};
-            
-            // Đọc cấu trúc bảng và cột từ database 'testdb' của AlaSQL
             let db = alasql.databases.testdb;
             if (db && db.tables) {
                 Object.keys(db.tables).forEach(tableName => {
@@ -685,10 +898,8 @@
                     dbTables[tableName] = table.columns ? table.columns.map(col => col.columnid) : [];
                 });
             }
-            
-            // Nạp dữ liệu vào tính năng Autocomplete của CodeMirror
             editor.setOption("hintOptions", {
-                hint: CodeMirror.hint.sql, // QUAN TRỌNG: Ép buộc chỉ gợi ý từ khóa SQL và Bảng/Cột
+                hint: CodeMirror.hint.sql,
                 tables: dbTables,
                 completeSingle: false
             });
@@ -713,12 +924,10 @@
                 theme: "default"
             });
 
-            // Lớp bảo vệ: Nếu bộ nhớ dính HTML, tự động làm sạch khung code
             if (editor.getValue().includes("<!DOCTYPE html>")) {
                 editor.setValue("");
             }
 
-            // Tự động bật gợi ý khi gõ mà không cần bấm phím
             editor.on('keyup', function(cm, event) {
                 const EXCLUDED_KEYS = [13, 8, 9, 16, 17, 18, 20, 27, 37, 38, 39, 40, 46];
                 if (!cm.state.completionActive && !EXCLUDED_KEYS.includes(event.keyCode)) {
@@ -726,7 +935,6 @@
                 }
             });
 
-            // Tự động lưu
             editor.on('change', function() {
                 localStorage.setItem(`sql_save_${currentDB}_${pracIdx}`, editor.getValue());
             });
@@ -736,6 +944,3 @@
     </script>
 </body>
 </html>
-
-
-   
